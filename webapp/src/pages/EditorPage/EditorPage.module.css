@@ -1,0 +1,64 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.welcome {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 48px 56px;
+    background: var(--bg-secondary-color);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+}
+
+.welcome-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--font-secondary-color);
+}
+
+.welcome-sub {
+    color: var(--font-muted);
+    font-size: 0.9rem;
+    text-align: center;
+    margin: 0;
+}
+
+.welcome-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.workspace {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.od-tab {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.device-tab {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}

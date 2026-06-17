@@ -1,0 +1,124 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.section {
+    background: var(--bg-secondary-color);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 18px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: var(--font-primary-color);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-align: left;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-faint);
+}
+
+.section-header:hover {
+    background: var(--fg-primary-color);
+    border-color: var(--border-faint);
+}
+
+.section-arrow {
+    font-size: 0.6rem;
+    color: var(--font-secondary-color);
+    width: 14px;
+}
+
+.section-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 32px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
+    flex: 1;
+}
+
+.label {
+    font-size: 0.72rem;
+    color: var(--font-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.baud-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.baud-label {
+    font-size: 0.72rem;
+    color: var(--font-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.baud-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+}
+
+.bool-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--font-primary-color);
+    user-select: none;
+}
+
+.bool-field input[type="checkbox"] {
+    width: auto;
+    border: none;
+    accent-color: var(--font-secondary-color);
+    cursor: pointer;
+}
+
+.comments-area textarea {
+    width: 100%;
+    background: var(--fg-primary-color);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 10px;
+    color: var(--font-primary-color);
+    font-family: inherit;
+    font-size: 0.875rem;
+    resize: vertical;
+    outline: none;
+}
+
+.comments-area textarea:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+}

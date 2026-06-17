@@ -1,0 +1,8 @@
+node_modules
+.jshintrc
+examples/*.eds
+examples/**/*.txt
+docs
+.vscode
+*.eds
+*.xdd

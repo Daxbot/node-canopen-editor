@@ -1,0 +1,142 @@
+/* ─── Jura variable font (scifi style) ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Jura:wght@300..700&display=swap');
+
+/* ─── Color palette & global tokens ────────────────────────────────────────── */
+:root {
+    --bg-primary-color:      #000000;
+    --bg-secondary-color:    #080E10;
+    --fg-primary-color:      #18242B;
+    --filterbar-color:       #0D161A;
+    --font-primary-color:    #FFFFFFE5;
+    --font-secondary-color:  #6FBDCCCC;
+    --font-terciary-color:   #ccc36f;
+    --font-muted:            #ffffff85;
+    --border-subtle:         rgba(255, 255, 255, 0.08);
+    --border-faint:          rgba(255, 255, 255, 0.07);
+    --danger-color:          #f87171;
+    --danger-border:         rgba(248, 113, 113, 0.4);
+}
+
+/* ─── Reset & base ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: 'Jura', 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    background: var(--bg-primary-color);
+    color: var(--font-primary-color);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ─── Typography ────────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 600; letter-spacing: 0.03em; }
+
+/* ─── Inputs ────────────────────────────────────────────────────────────────── */
+input, select, textarea {
+    background: transparent;
+    color: var(--font-primary-color);
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0;
+    padding: 4px 2px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-bottom-color: var(--font-primary-color);
+}
+
+input.invalid, select.invalid {
+    outline: 2px solid red;
+    border-radius: 3px;
+}
+
+/* Prevent autofill white flash */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px var(--fg-primary-color) inset;
+    -webkit-text-fill-color: var(--font-primary-color);
+    transition: background-color 99999s ease-in-out 0s;
+}
+
+select option { background: var(--fg-primary-color); }
+
+/* ─── Buttons ────────────────────────────────────────────────────────────────── */
+button {
+    background: var(--bg-secondary-color);
+    color: var(--font-primary-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+button:hover {
+    border-color: var(--font-secondary-color);
+    background: var(--fg-primary-color);
+}
+
+button.primary {
+    border-color: var(--font-secondary-color);
+    color: var(--font-secondary-color);
+}
+
+button.primary:hover {
+    background: rgba(111, 189, 204, 0.12);
+}
+
+button.danger {
+    border-color: var(--danger-border);
+    color: var(--danger-color);
+}
+
+button.danger:hover {
+    border-color: var(--danger-color);
+    background: rgba(248, 113, 113, 0.12);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ─── Scrollbars ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 9999px;
+    background-color: #4a5568;
+}
+::-webkit-scrollbar-thumb:hover { background-color: #6a7a8a; }
+::-webkit-scrollbar-track {
+    background-color: var(--bg-secondary-color);
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-corner { background: var(--bg-secondary-color); }

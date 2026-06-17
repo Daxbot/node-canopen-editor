@@ -1,0 +1,409 @@
+/* ─── Page layout ─────────────────────────────────────────────────────────── */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ─── Top section ─────────────────────────────────────────────────────────── */
+
+.top-section {
+    display: flex;
+    height: 230px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    overflow: hidden;
+}
+
+/* ─── Available objects panel (left) ─────────────────────────────────────── */
+
+.avail-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border-subtle);
+    min-width: 0;
+}
+
+.avail-header {
+    padding: 8px 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--font-secondary-color);
+    background: var(--bg-secondary-color);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.avail-cols {
+    display: grid;
+    grid-template-columns: 70px 54px 1fr 110px 40px;
+    gap: 0 10px;
+    padding: 5px 14px;
+    font-size: 0.68rem;
+    color: var(--font-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-faint);
+    flex-shrink: 0;
+}
+
+.avail-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.avail-row {
+    display: grid;
+    grid-template-columns: 70px 54px 1fr 110px 40px;
+    gap: 0 10px;
+    padding: 5px 14px;
+    font-size: 0.8rem;
+    color: var(--font-primary-color);
+    cursor: grab;
+    border-bottom: 1px solid var(--border-faint);
+    user-select: none;
+    transition: background 0.1s;
+}
+
+.avail-row:hover {
+    background: var(--bg-secondary-color);
+    color: var(--font-secondary-color);
+}
+
+.avail-row:active { cursor: grabbing; }
+
+.avail-name-col {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.avail-empty {
+    padding: 20px 16px;
+    color: var(--font-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    line-height: 1.6;
+}
+
+/* ─── Right section (comm params + actions) ──────────────────────────────── */
+
+.right-section {
+    width: 290px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ─── Communication parameters ──────────────────────────────────────────── */
+
+.comm-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.comm-title {
+    padding: 8px 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--font-secondary-color);
+    background: var(--bg-secondary-color);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.comm-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--font-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.comm-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 12px;
+    overflow-y: auto;
+}
+
+.comm-field {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    align-items: center;
+    gap: 8px;
+}
+
+.comm-field span {
+    font-size: 0.75rem;
+    color: var(--font-muted);
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+
+.comm-field input {
+    font-size: 0.8rem;
+    padding: 2px 4px;
+}
+
+.invalid-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    user-select: none;
+}
+
+.invalid-check input[type="checkbox"] {
+    width: auto;
+    border: none;
+    accent-color: var(--font-secondary-color);
+}
+
+.comm-bits {
+    font-size: 0.7rem;
+    color: var(--font-secondary-color);
+    text-align: right;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-faint);
+}
+
+/* ─── Action buttons ─────────────────────────────────────────────────────── */
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.actions button {
+    width: 100%;
+    padding: 6px 0;
+    font-size: 0.8rem;
+    justify-content: center;
+}
+
+/* ─── Grid section ───────────────────────────────────────────────────────── */
+
+.grid-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.grid-title {
+    padding: 6px 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--font-muted);
+    background: var(--filterbar-color);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.grid-scroll {
+    flex: 1;
+    overflow: auto;
+    padding-bottom: 16px;
+}
+
+/* ─── PDO grid ───────────────────────────────────────────────────────────── */
+
+.pdo-grid {
+    display: flex;
+    flex-direction: column;
+    min-width: 760px;
+}
+
+.grid-empty {
+    padding: 32px;
+    text-align: center;
+    color: var(--font-muted);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Fixed column widths */
+.pdo-cell-id  { width: 34px;  flex-shrink: 0; text-align: center; }
+.pdo-cell-cob { width: 68px;  flex-shrink: 0; text-align: center; }
+.pdo-cell-idx { width: 68px;  flex-shrink: 0; text-align: center; }
+
+/* ─── Grid header row ────────────────────────────────────────────────────── */
+
+.grid-header {
+    display: flex;
+    align-items: stretch;
+    background: var(--filterbar-color);
+    border-bottom: 2px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.grid-header .pdo-cell-id,
+.grid-header .pdo-cell-cob,
+.grid-header .pdo-cell-idx {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    font-size: 0.65rem;
+    color: var(--font-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-right: 1px solid var(--border-faint);
+}
+
+/* ─── Byte header (inside grid header) ──────────────────────────────────── */
+
+.byte-header {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+}
+
+.byte-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 2px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    gap: 1px;
+}
+
+.byte-cell:last-child { border-right: none; }
+
+.byte-label {
+    font-size: 0.65rem;
+    color: var(--font-secondary-color);
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+.byte-bit {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.25);
+}
+
+/* ─── PDO data row ───────────────────────────────────────────────────────── */
+
+.pdo-row {
+    display: flex;
+    align-items: stretch;
+    min-height: 36px;
+    border-bottom: 1px solid var(--border-faint);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.pdo-row:nth-child(odd)  { background: rgba(255,255,255,0.015); }
+.pdo-row:nth-child(even) { background: transparent; }
+.pdo-row:hover           { background: rgba(255,255,255,0.04); }
+
+.pdo-row-selected {
+    background: rgba(111, 189, 204, 0.08) !important;
+    border-left: 2px solid var(--font-secondary-color);
+}
+
+.pdo-row .pdo-cell-id,
+.pdo-row .pdo-cell-cob,
+.pdo-row .pdo-cell-idx {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    font-size: 0.78rem;
+    border-right: 1px solid var(--border-faint);
+}
+
+.pdo-row .pdo-cell-id  { color: var(--font-muted); font-size: 0.72rem; }
+.pdo-row .pdo-cell-cob { color: var(--font-terciary-color); font-family: monospace; font-size: 0.75rem; }
+.pdo-row .pdo-cell-idx { color: rgba(111,189,204,0.7); font-family: monospace; font-size: 0.75rem; }
+
+.pdo-row-selected .pdo-cell-cob { color: var(--font-secondary-color); }
+
+/* ─── Bit area ───────────────────────────────────────────────────────────── */
+
+.pdo-bits {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+    transition: background 0.15s;
+}
+
+.bits-dragover {
+    background: rgba(111, 189, 204, 0.06);
+    outline: 1px dashed rgba(111,189,204,0.4);
+    outline-offset: -1px;
+}
+
+/* ─── Slot ───────────────────────────────────────────────────────────────── */
+
+.slot {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    padding: 0 4px;
+    min-width: 0;
+    cursor: pointer;
+    transition: filter 0.12s;
+}
+
+.slot:last-child { border-right: none; }
+
+.slot:not(.slot-empty):hover {
+    filter: brightness(1.4);
+}
+
+.slot-empty {
+    background: rgba(255,255,255,0.03);
+    cursor: default;
+}
+
+.slot-dragover {
+    background: rgba(111, 189, 204, 0.15) !important;
+}
+
+.slot-text {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    letter-spacing: 0.02em;
+}
+
+.slot-empty .slot-text {
+    color: rgba(255,255,255,0.2);
+    font-style: italic;
+}
