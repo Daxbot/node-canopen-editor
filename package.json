@@ -19,9 +19,5 @@
   "bugs": {
     "url": "https://github.com/DaxBot/node-canopen-editor/issues"
   },
-  "homepage": "https://daxbot.com/open-source",
-  "dependencies": {
-    "canopen-eds": "^0.1.0",
-    "canopen-xdd": "^0.1.0"
-  }
+  "homepage": "https://daxbot.com/open-source"
 }

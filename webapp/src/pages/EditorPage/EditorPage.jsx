@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { parseEds, serializeEds, parseXdd, writeXdd, createEmptyEds } from '../../lib/eds/index.js';
+import { parseEds, serializeEds, parseXdd, writeXdd, createEmptyEds, exportOD } from '../../lib/eds/index.js';
 import Toolbar from './components/Toolbar/Toolbar.jsx';
 import DeviceInfo from './components/DeviceInfo/DeviceInfo.jsx';
 import ObjectList from './components/ObjectList/ObjectList.jsx';
@@ -104,7 +104,29 @@ export default function EditorPage() {
             URL.revokeObjectURL(url);
         };
 
-        if (format === 'xdd') {
+        if (format === 'canopen-node') {
+            try {
+                const baseName = 'OD';
+                const result = exportOD(eds, baseName);
+                const hBlob = new Blob([result.header], { type: 'text/plain' });
+                const hUrl = URL.createObjectURL(hBlob);
+                const hLink = document.createElement('a');
+                hLink.href = hUrl;
+                hLink.download = 'OD.h';
+                hLink.click();
+                URL.revokeObjectURL(hUrl);
+
+                const cBlob = new Blob([result.source], { type: 'text/plain' });
+                const cUrl = URL.createObjectURL(cBlob);
+                const cLink = document.createElement('a');
+                cLink.href = cUrl;
+                cLink.download = 'OD.c';
+                cLink.click();
+                URL.revokeObjectURL(cUrl);
+            } catch (err) {
+                alert(`Failed to export CANopenNode:\n${err.message}`);
+            }
+        } else if (format === 'xdd') {
             try {
                 const baseName = fileName ? fileName.replace(/\.[^.]+$/, '') : 'device';
                 const content = writeXdd(eds, `${baseName}.xdd`);

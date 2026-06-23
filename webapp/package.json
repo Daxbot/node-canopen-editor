@@ -7,13 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:clean": "rm -rf node_modules/.vite && vite --force"
   },
   "dependencies": {
+    "canopen-eds": "^0.2.0",
+    "canopen-xdd": "^0.2.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "canopen-xdd": "^0.1.0",
-    "canopen-eds": "^0.1.0"
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

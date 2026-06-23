@@ -65,6 +65,7 @@ export default function Toolbar({
                             <div className={styles['export-menu']}>
                                 <button onClick={() => handleExport('eds')}>Export as EDS</button>
                                 <button onClick={() => handleExport('xdd')}>Export as XDD</button>
+                                <button onClick={() => handleExport('canopen-node')}>Export as CANopenNode</button>
                             </div>
                         )}
                     </div>

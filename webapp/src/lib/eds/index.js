@@ -1,5 +1,7 @@
 export { parseEds, serializeEds } from 'canopen-eds';
+export { Eds } from 'canopen-eds';
 export { parseXdd, serializeXdd as writeXdd } from 'canopen-xdd';
+export { exportOD } from 'canopen-xdd';
 export {
     getPdoMappableObjects,
     parseMappingValue,
