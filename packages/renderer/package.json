@@ -1,0 +1,19 @@
+{
+  "name": "@canopen-editor/renderer",
+  "version": "0.1.0",
+  "description": "Shared React renderer for the CANopen editor (web + desktop)",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "canopen-eds": "^0.2.0",
+    "canopen-xdd": "^0.2.0"
+  },
+  "peerDependencies": {
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  }
+}

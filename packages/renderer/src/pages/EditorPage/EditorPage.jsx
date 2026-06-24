@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { parseEds, serializeEds, parseXdd, writeXdd, createEmptyEds, exportOD } from '../../lib/eds/index.js';
+import { useFileService } from '../../platform/FileServiceContext.jsx';
 import Toolbar from './components/Toolbar/Toolbar.jsx';
 import DeviceInfo from './components/DeviceInfo/DeviceInfo.jsx';
 import ObjectList from './components/ObjectList/ObjectList.jsx';
@@ -8,13 +9,14 @@ import PdoMapping from './components/PdoMapping/PdoMapping.jsx';
 import styles from './EditorPage.module.css';
 
 export default function EditorPage() {
+    const fileService = useFileService();
     const [eds, setEds] = useState(null);
     const [fileName, setFileName] = useState(null);
+    const [filePath, setFilePath] = useState(null); // on-disk path (desktop only); null on web
     const [isDirty, setIsDirty] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [activeTab, setActiveTab] = useState('od');
     const [fileFormat, setFileFormat] = useState('eds'); // 'eds' or 'xdd'
-    const fileInputRef = useRef(null);
 
     // ─── File operations ───────────────────────────────────────────────────
 
@@ -22,123 +24,126 @@ export default function EditorPage() {
         if (isDirty && !window.confirm('Discard unsaved changes?')) return;
         setEds(createEmptyEds());
         setFileName('Newdevice.od');
+        setFilePath(null);
         setFileFormat('eds');
         setIsDirty(false);
         setSelectedIndex(null);
     }, [isDirty]);
 
-    const handleOpenClick = useCallback(() => {
-        fileInputRef.current?.click();
-    }, []);
+    const handleOpen = useCallback(async () => {
+        if (isDirty && !window.confirm('Discard unsaved changes?')) return;
 
-    const handleFileChange = useCallback((e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        
-        const isXdd = file.name.toLowerCase().endsWith('.xdd');
-        const reader = new FileReader();
-        
-        reader.onload = (evt) => {
-            try {
-                let parsed;
-                if (isXdd) {
-                    parsed = parseXdd(evt.target.result);
-                } else {
-                    parsed = parseEds(evt.target.result);
-                }
-                setEds(parsed);
-                setFileName(file.name);
-                setFileFormat(isXdd ? 'xdd' : 'eds');
-                setIsDirty(false);
-                setSelectedIndex(null);
-            }
-            catch (err) {
-                alert(`Failed to parse file:\n${err.message}`);
-            }
-        };
-        
-        reader.readAsText(file);
-        e.target.value = '';
-    }, []);
+        let result;
+        try {
+            result = await fileService.openTextFile({ extensions: ['eds', 'xdd'] });
+        } catch (err) {
+            alert(`Failed to open file:\n${err.message}`);
+            return;
+        }
+        if (!result) return; // cancelled
 
-    const handleSave = useCallback(() => {
-        if (!eds) return;
-        
-        const isXdd = fileFormat === 'xdd' || (fileName && fileName.toLowerCase().endsWith('.xdd'));
-        
-        const downloadFile = (content, contentType, extension) => {
-            const blob = new Blob([content], { type: contentType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName || `device.${extension}`;
-            a.click();
-            URL.revokeObjectURL(url);
+        const isXdd = result.name.toLowerCase().endsWith('.xdd');
+        try {
+            const parsed = isXdd ? parseXdd(result.content) : parseEds(result.content);
+            setEds(parsed);
+            setFileName(result.name);
+            setFilePath(result.path ?? null);
+            setFileFormat(isXdd ? 'xdd' : 'eds');
             setIsDirty(false);
-        };
-
-        if (isXdd) {
-            try {
-                const content = writeXdd(eds, fileName);
-                downloadFile(content, 'application/xml', 'xdd');
-            } catch (err) {
-                alert(`Failed to export XDD:\n${err.message}`);
-            }
-        } else {
-            const content = serializeEds(eds);
-            downloadFile(content, 'text/plain', 'eds');
+            setSelectedIndex(null);
         }
-    }, [eds, fileName, fileFormat]);
+        catch (err) {
+            alert(`Failed to parse file:\n${err.message}`);
+        }
+    }, [isDirty, fileService]);
 
-    const handleExportAs = useCallback((format) => {
+    const handleSave = useCallback(async () => {
         if (!eds) return;
-        
-        const downloadFile = (content, contentType, extension) => {
-            const baseName = fileName ? fileName.replace(/\.[^.]+$/, '') : 'device';
-            const blob = new Blob([content], { type: contentType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${baseName}.${extension}`;
-            a.click();
-            URL.revokeObjectURL(url);
-        };
 
-        if (format === 'canopen-node') {
-            try {
-                const baseName = 'OD';
-                const result = exportOD(eds, baseName);
-                const hBlob = new Blob([result.header], { type: 'text/plain' });
-                const hUrl = URL.createObjectURL(hBlob);
-                const hLink = document.createElement('a');
-                hLink.href = hUrl;
-                hLink.download = 'OD.h';
-                hLink.click();
-                URL.revokeObjectURL(hUrl);
+        const isXdd = fileFormat === 'xdd' || (fileName && fileName.toLowerCase().endsWith('.xdd'));
 
-                const cBlob = new Blob([result.source], { type: 'text/plain' });
-                const cUrl = URL.createObjectURL(cBlob);
-                const cLink = document.createElement('a');
-                cLink.href = cUrl;
-                cLink.download = 'OD.c';
-                cLink.click();
-                URL.revokeObjectURL(cUrl);
-            } catch (err) {
-                alert(`Failed to export CANopenNode:\n${err.message}`);
+        let content, contentType, ext;
+        try {
+            if (isXdd) {
+                content = writeXdd(eds, fileName);
+                contentType = 'application/xml';
+                ext = 'xdd';
+            } else {
+                content = serializeEds(eds);
+                contentType = 'text/plain';
+                ext = 'eds';
             }
-        } else if (format === 'xdd') {
-            try {
-                const baseName = fileName ? fileName.replace(/\.[^.]+$/, '') : 'device';
-                const content = writeXdd(eds, `${baseName}.xdd`);
-                downloadFile(content, 'application/xml', 'xdd');
-            } catch (err) {
-                alert(`Failed to export XDD:\n${err.message}`);
-            }
-        } else {
-            const content = serializeEds(eds);
-            downloadFile(content, 'text/plain', 'eds');
+        } catch (err) {
+            alert(`Failed to save file:\n${err.message}`);
+            return;
         }
-    }, [eds, fileName]);
+
+        try {
+            // path set  -> inline overwrite (desktop)
+            // path null -> Save dialog (desktop) / browser download (web)
+            const result = await fileService.writeFile({
+                path: filePath,
+                suggestedName: fileName || `device.${ext}`,
+                content,
+                contentType,
+                extensions: [ext],
+            });
+            if (!result) return; // cancelled
+            setFilePath(result.path ?? filePath);
+            if (result.name) setFileName(result.name);
+            setIsDirty(false);
+        } catch (err) {
+            alert(`Failed to save file:\n${err.message}`);
+        }
+    }, [eds, fileName, fileFormat, filePath, fileService]);
+
+    const handleExportAs = useCallback(async (format) => {
+        if (!eds) return;
+
+        const baseName = fileName ? fileName.replace(/\.[^.]+$/, '') : 'device';
+
+        try {
+            if (format === 'canopen-node') {
+                // CANopenNode export produces a header + source pair.
+                const result = exportOD(eds, 'OD');
+                const h = await fileService.writeFile({
+                    path: null,
+                    suggestedName: 'OD.h',
+                    content: result.header,
+                    contentType: 'text/plain',
+                    extensions: ['h'],
+                });
+                if (!h) return; // cancelled before the first file
+                await fileService.writeFile({
+                    path: null,
+                    suggestedName: 'OD.c',
+                    content: result.source,
+                    contentType: 'text/plain',
+                    extensions: ['c'],
+                });
+            } else if (format === 'xdd') {
+                const content = writeXdd(eds, `${baseName}.xdd`);
+                await fileService.writeFile({
+                    path: null,
+                    suggestedName: `${baseName}.xdd`,
+                    content,
+                    contentType: 'application/xml',
+                    extensions: ['xdd'],
+                });
+            } else {
+                const content = serializeEds(eds);
+                await fileService.writeFile({
+                    path: null,
+                    suggestedName: `${baseName}.eds`,
+                    content,
+                    contentType: 'text/plain',
+                    extensions: ['eds'],
+                });
+            }
+        } catch (err) {
+            alert(`Failed to export:\n${err.message}`);
+        }
+    }, [eds, fileName, fileService]);
 
     // ─── Edit helpers ──────────────────────────────────────────────────────
 
@@ -151,23 +156,33 @@ export default function EditorPage() {
         updateEds(prev => ({ ...prev, objects: updated }));
     }, [updateEds]);
 
+    // ─── Native menu / keyboard accelerators (desktop only) ──────────────────
+
+    useEffect(() => {
+        if (!fileService.onMenuCommand) return undefined;
+        return fileService.onMenuCommand((command) => {
+            switch (command) {
+                case 'new': handleNew(); break;
+                case 'open': handleOpen(); break;
+                case 'save': handleSave(); break;
+                case 'export-eds': handleExportAs('eds'); break;
+                case 'export-xdd': handleExportAs('xdd'); break;
+                case 'export-canopen-node': handleExportAs('canopen-node'); break;
+                default: break;
+            }
+        });
+    }, [fileService, handleNew, handleOpen, handleSave, handleExportAs]);
+
     // ─── Render ────────────────────────────────────────────────────────────
 
     return (
         <div className={styles.page}>
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".eds,.xdd"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-            />
             <Toolbar
                 fileName={fileName}
                 isDirty={isDirty}
                 hasFile={!!eds}
                 onNew={handleNew}
-                onOpen={handleOpenClick}
+                onOpen={handleOpen}
                 onSave={handleSave}
                 onExportAs={handleExportAs}
                 activeTab={activeTab}
@@ -185,7 +200,7 @@ export default function EditorPage() {
                             <button className="primary" onClick={handleNew}>
                                 New Device
                             </button>
-                            <button onClick={handleOpenClick}>
+                            <button onClick={handleOpen}>
                                 Open EDS/XDD File
                             </button>
                         </div>

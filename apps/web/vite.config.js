@@ -8,6 +8,10 @@ export default defineConfig({
   plugins: [react()],
   base: process.env.VITE_BASE ?? './',
   optimizeDeps: {
+    // canopen-eds / canopen-xdd are pulled in through the workspace renderer
+    // package; pre-bundle them. Exclude the renderer itself so Vite serves its
+    // source (JSX + CSS modules) through the normal plugin pipeline.
     include: ['canopen-eds', 'canopen-xdd'],
+    exclude: ['@canopen-editor/renderer'],
   },
 })

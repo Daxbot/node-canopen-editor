@@ -1,0 +1,25 @@
+{
+  "name": "@canopen-editor/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CANopen editor desktop app (Electron)",
+  "author": "Wilkins White <ww@novadynamics.com>",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build && electron-builder",
+    "build:unpack": "electron-vite build && electron-builder --dir",
+    "compile": "electron-vite build",
+    "preview": "electron-vite preview"
+  },
+  "devDependencies": {
+    "@canopen-editor/renderer": "workspace:*",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "vite": "^7.0.0"
+  }
+}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
     ObjectType, ObjectTypeName,
-    DataType, DataTypeName,
+    DataTypeName,
     AccessType,
     isContainerType,
     createSubEntry,
