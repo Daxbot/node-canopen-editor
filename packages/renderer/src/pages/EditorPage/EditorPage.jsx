@@ -23,9 +23,9 @@ export default function EditorPage() {
     const handleNew = useCallback(() => {
         if (isDirty && !window.confirm('Discard unsaved changes?')) return;
         setEds(createEmptyEds());
-        setFileName('Newdevice.od');
+        setFileName('Newdevice.xdd');
         setFilePath(null);
-        setFileFormat('eds');
+        setFileFormat('xdd');
         setIsDirty(false);
         setSelectedIndex(null);
     }, [isDirty]);
