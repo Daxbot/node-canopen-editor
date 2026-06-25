@@ -353,9 +353,9 @@
 
 .pdo-bits {
     flex: 1;
-    display: flex;
-    align-items: stretch;
+    position: relative;
     min-width: 0;
+    overflow: hidden;
     transition: background 0.15s;
 }
 
@@ -365,32 +365,64 @@
     outline-offset: -1px;
 }
 
+/* Faint hint shown when the PDO has no mapped objects. */
+.bits-empty-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-style: italic;
+    color: rgba(255,255,255,0.2);
+    pointer-events: none;
+    letter-spacing: 0.02em;
+}
+
 /* ─── Slot ───────────────────────────────────────────────────────────────── */
 
 .slot {
+    position: absolute;
+    top: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     overflow: hidden;
     border-right: 1px solid rgba(255,255,255,0.07);
     padding: 0 4px;
-    min-width: 0;
     cursor: pointer;
-    transition: filter 0.12s;
+    transition: left 0.15s ease, width 0.15s ease, filter 0.12s;
 }
 
-.slot:last-child { border-right: none; }
-
-.slot:not(.slot-empty):hover {
+.slot:hover {
     filter: brightness(1.4);
 }
 
-.slot-empty {
-    background: rgba(255,255,255,0.03);
-    cursor: default;
+.slot-selected {
+    outline: 2px solid var(--font-secondary-color);
+    outline-offset: -2px;
+    z-index: 2;
 }
 
-.slot-dragover {
-    background: rgba(111, 189, 204, 0.15) !important;
+/* ─── Hologram (drag preview) ────────────────────────────────────────────── */
+
+.slot-hologram {
+    background: rgba(111, 189, 204, 0.18);
+    border: 1px dashed var(--font-secondary-color);
+    cursor: default;
+    pointer-events: none;
+    z-index: 3;
+    animation: hologram-in 0.12s ease;
+}
+
+.slot-hologram-overflow {
+    background: rgba(248, 113, 113, 0.15);
+    border: 1px dashed var(--danger-color);
+}
+
+@keyframes hologram-in {
+    from { opacity: 0; transform: scaleX(0.85); }
+    to   { opacity: 1; transform: scaleX(1); }
 }
 
 .slot-text {
@@ -403,7 +435,6 @@
     letter-spacing: 0.02em;
 }
 
-.slot-empty .slot-text {
-    color: rgba(255,255,255,0.2);
-    font-style: italic;
+.slot-hologram-overflow .slot-text {
+    color: var(--danger-color);
 }

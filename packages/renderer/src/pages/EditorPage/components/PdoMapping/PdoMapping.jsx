@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
     getTxPdos, getRxPdos,
     getPdoMappableObjects,
@@ -10,10 +10,13 @@ import {
 } from '../../../../lib/eds/index.js';
 import {
     computePdoSegments,
+    buildDragPreview,
+    hoveredInsertIndex,
     PDO_MAX_BITS,
     SLOT_COLORS,
 } from '../../../../lib/eds/pdo-display.js';
 import { useDialog } from '../../../../components/Dialog/DialogProvider.jsx';
+import { useContextMenu } from '../../hooks/useContextMenu.jsx';
 import styles from './PdoMapping.module.css';
 
 // ─── Hex formatting helpers ───────────────────────────────────────────────────
@@ -39,17 +42,20 @@ function ByteHeader() {
     );
 }
 
-// ─── PDO slot (single mapped object or empty remainder) ──────────────────────
+// ─── PDO slot (single mapped object or drag hologram) ────────────────────────
 
-function PdoSlot({ segment, onRemove, isDragOver }) {
-    if (segment.isEmpty) {
+function pct(bits) { return `${(bits / PDO_MAX_BITS) * 100}%`; }
+
+function PdoSlot({ segment, isSelected, onSelect, onContextMenu }) {
+    const style = { left: pct(segment.startBit), width: pct(segment.bits) };
+
+    if (segment.isHologram) {
+        const cls = `${styles.slot} ${styles['slot-hologram']} ${segment.overflow ? styles['slot-hologram-overflow'] : ''}`;
         return (
-            <div
-                className={`${styles.slot} ${styles['slot-empty']} ${isDragOver ? styles['slot-dragover'] : ''}`}
-                style={{ flex: segment.bits }}
-                title={`Empty — ${segment.bits} bits available. Drop an object here.`}
-            >
-                <span className={styles['slot-text']}>Empty</span>
+            <div className={cls} style={style}>
+                <span className={styles['slot-text']}>
+                    {segment.overflow ? `Too big (${segment.bits} bits)` : segment.shortLabel}
+                </span>
             </div>
         );
     }
@@ -57,10 +63,11 @@ function PdoSlot({ segment, onRemove, isDragOver }) {
     const bg = SLOT_COLORS[segment.colorIndex % SLOT_COLORS.length];
     return (
         <div
-            className={styles.slot}
-            style={{ flex: segment.bits, background: bg }}
-            onClick={onRemove}
-            title={`${segment.label} (${segment.bits} bits) — click to remove`}
+            className={`${styles.slot} ${isSelected ? styles['slot-selected'] : ''}`}
+            style={{ ...style, background: bg }}
+            onClick={onSelect}
+            onContextMenu={onContextMenu}
+            title={`${segment.label} (${segment.bits} bits) — click to select, Delete to remove`}
         >
             <span className={styles['slot-text']}>{segment.shortLabel}</span>
         </div>
@@ -69,28 +76,50 @@ function PdoSlot({ segment, onRemove, isDragOver }) {
 
 // ─── Single PDO grid row ──────────────────────────────────────────────────────
 
-function PdoRow({ pdo, isSelected, objects, onSelect, onDropObject, onRemoveMapping }) {
+function PdoRow({
+    pdo, isSelected, objects, selectedMapping, draggedItemRef,
+    onSelect, onSelectMapping, onDropObject, onMappingContextMenu,
+}) {
     const [dragOver, setDragOver] = useState(false);
-    const segments = computePdoSegments(pdo.mappings, objects);
+    const [preview, setPreview] = useState(null);
+    const bitsRef = useRef(null);
     const usedBits = getMappingBitUsage(pdo.mappings);
+
+    function insertIndexFromEvent(e) {
+        const rect = bitsRef.current?.getBoundingClientRect();
+        if (!rect || rect.width === 0) return pdo.mappings.length;
+        const fraction = (e.clientX - rect.left) / rect.width;
+        return hoveredInsertIndex(pdo.mappings, fraction);
+    }
 
     function handleDragOver(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
         setDragOver(true);
+        const item = draggedItemRef.current;
+        if (!item) return;
+        const insertIndex = insertIndexFromEvent(e);
+        setPreview(buildDragPreview(pdo.mappings, objects, insertIndex, item));
     }
 
-    function handleDragLeave() { setDragOver(false); }
+    function handleDragLeave() { setDragOver(false); setPreview(null); }
 
     function handleDrop(e) {
         e.preventDefault();
         setDragOver(false);
+        setPreview(null);
+        const insertIndex = insertIndexFromEvent(e);
         try {
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-            onDropObject(pdo.id, data);
+            onDropObject(pdo.id, data, insertIndex);
         }
         catch { /* ignore bad data */ }
     }
+
+    const segments = preview
+        ? preview.segments
+        : computePdoSegments(pdo.mappings, objects).filter(s => !s.isEmpty);
+    const showEmptyHint = !preview && pdo.mappings.length === 0;
 
     return (
         <div
@@ -102,18 +131,30 @@ function PdoRow({ pdo, isSelected, objects, onSelect, onDropObject, onRemoveMapp
             <div className={styles['pdo-cell-idx']}>{hex4(pdo.commIndex)}</div>
 
             <div
+                ref={bitsRef}
                 className={`${styles['pdo-bits']} ${dragOver ? styles['bits-dragover'] : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 title={`${usedBits}/${PDO_MAX_BITS} bits used — drop to add`}
             >
-                {segments.map((seg, i) => (
+                {showEmptyHint && (
+                    <span className={styles['bits-empty-hint']}>Empty — drop an object here</span>
+                )}
+                {segments.map(seg => (
                     <PdoSlot
-                        key={i}
+                        key={seg.isHologram ? 'hologram' : `${seg.mapping.index}/${seg.mapping.subIndex}`}
                         segment={seg}
-                        isDragOver={dragOver && seg.isEmpty}
-                        onRemove={seg.isEmpty ? undefined : () => onRemoveMapping(pdo.id, seg.mapping)}
+                        isSelected={
+                            !seg.isHologram &&
+                            selectedMapping?.pdoId === pdo.id &&
+                            selectedMapping?.key === `${seg.mapping.index}/${seg.mapping.subIndex}`
+                        }
+                        onSelect={seg.isHologram ? undefined : (e) => {
+                            e.stopPropagation();
+                            onSelectMapping(pdo.id, seg.mapping);
+                        }}
+                        onContextMenu={seg.isHologram ? undefined : (e) => onMappingContextMenu(e, pdo.id, seg.mapping)}
                     />
                 ))}
             </div>
@@ -123,7 +164,10 @@ function PdoRow({ pdo, isSelected, objects, onSelect, onDropObject, onRemoveMapp
 
 // ─── PDO grid (header + all rows) ─────────────────────────────────────────────
 
-function PdoGrid({ pdos, selectedPdoId, objects, onSelectPdo, onDropObject, onRemoveMapping }) {
+function PdoGrid({
+    pdos, selectedPdoId, objects, selectedMapping, draggedItemRef,
+    onSelectPdo, onSelectMapping, onDropObject, onMappingContextMenu,
+}) {
     if (pdos.length === 0) {
         return (
             <div className={styles['grid-empty']}>
@@ -149,9 +193,12 @@ function PdoGrid({ pdos, selectedPdoId, objects, onSelectPdo, onDropObject, onRe
                     pdo={pdo}
                     isSelected={selectedPdoId === pdo.id}
                     objects={objects}
+                    selectedMapping={selectedMapping}
+                    draggedItemRef={draggedItemRef}
                     onSelect={onSelectPdo}
+                    onSelectMapping={onSelectMapping}
                     onDropObject={onDropObject}
-                    onRemoveMapping={onRemoveMapping}
+                    onMappingContextMenu={onMappingContextMenu}
                 />
             ))}
         </div>
@@ -160,12 +207,13 @@ function PdoGrid({ pdos, selectedPdoId, objects, onSelectPdo, onDropObject, onRe
 
 // ─── Available objects list ───────────────────────────────────────────────────
 
-function AvailableObjects({ objects }) {
+function AvailableObjects({ objects, onItemDragStart, onItemDragEnd }) {
     const items = getPdoMappableObjects(objects);
 
     function handleDragStart(e, item) {
         e.dataTransfer.effectAllowed = 'copy';
         e.dataTransfer.setData('text/plain', JSON.stringify(item));
+        onItemDragStart(item);
     }
 
     return (
@@ -185,6 +233,7 @@ function AvailableObjects({ objects }) {
                         className={styles['avail-row']}
                         draggable
                         onDragStart={e => handleDragStart(e, item)}
+                        onDragEnd={onItemDragEnd}
                         title={`Drag onto a PDO row to map this object`}
                     >
                         <span>{hex4(item.index)}</span>
@@ -305,7 +354,10 @@ function CommParams({ pdo, onChange }) {
 
 export default function PdoMapping({ objects, isRx, onObjectsChange }) {
     const dialog = useDialog();
+    const { openMenu, menuElement } = useContextMenu();
     const [selectedPdoId, setSelectedPdoId] = useState(null);
+    const [selectedMapping, setSelectedMapping] = useState(null);
+    const draggedItemRef = useRef(null);
 
     const pdos = isRx ? getRxPdos(objects) : getTxPdos(objects);
     const selectedPdo = pdos.find(p => p.id === selectedPdoId) ?? null;
@@ -318,30 +370,21 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
 
     // ── Drop object onto PDO row ──────────────────────────────────────────
 
-    const handleDropObject = useCallback((pdoId, item) => {
+    const handleDropObject = useCallback((pdoId, item, insertIndex) => {
         const pdo = pdos.find(p => p.id === pdoId);
         if (!pdo) return;
 
+        // Silently reject objects that won't fit — the red overflow hologram
+        // shown during the drag already communicated why.
         const used = getMappingBitUsage(pdo.mappings);
-        if (used + item.bits > PDO_MAX_BITS) {
-            dialog.alert({
-                title: 'PDO full',
-                message: `Cannot add ${item.bits}-bit object — only ${PDO_MAX_BITS - used} bits remaining in PDO ${pdoId}.`,
-            });
-            return;
-        }
-        if (pdo.mappings.length >= 8) {
-            dialog.alert({ title: 'PDO full', message: 'A PDO can map at most 8 objects.' });
-            return;
-        }
+        if (used + item.bits > PDO_MAX_BITS || pdo.mappings.length >= 8) return;
 
-        const updated = {
-            ...pdo,
-            mappings: [...pdo.mappings, { index: item.index, subIndex: item.subIndex, bits: item.bits }],
-        };
-        onObjectsChange(writePdoToObjects(objects, updated, isRx));
+        const mappings = [...pdo.mappings];
+        const at = insertIndex == null ? mappings.length : insertIndex;
+        mappings.splice(at, 0, { index: item.index, subIndex: item.subIndex, bits: item.bits });
+        onObjectsChange(writePdoToObjects(objects, { ...pdo, mappings }, isRx));
         setSelectedPdoId(pdoId);
-    }, [pdos, objects, isRx, onObjectsChange, dialog]);
+    }, [pdos, objects, isRx, onObjectsChange]);
 
     // ── Remove mapping ────────────────────────────────────────────────────
 
@@ -356,6 +399,39 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
         };
         onObjectsChange(writePdoToObjects(objects, updated, isRx));
     }, [pdos, objects, isRx, onObjectsChange]);
+
+    // ── Select / context-menu / keyboard for mapped objects ───────────────
+
+    const handleSelectMapping = useCallback((pdoId, mapping) => {
+        setSelectedPdoId(pdoId);
+        setSelectedMapping({ pdoId, key: `${mapping.index}/${mapping.subIndex}` });
+    }, []);
+
+    const handleMappingContextMenu = useCallback((e, pdoId, mapping) => {
+        handleSelectMapping(pdoId, mapping);
+        openMenu(e, [
+            {
+                id: 'delete', label: 'Delete', shortcut: 'Del', danger: true,
+                onSelect: () => { handleRemoveMapping(pdoId, mapping); setSelectedMapping(null); },
+            },
+        ]);
+    }, [handleSelectMapping, handleRemoveMapping, openMenu]);
+
+    function handleSelectPdo(pdoId) {
+        setSelectedPdoId(pdoId);
+        setSelectedMapping(null);
+    }
+
+    function handleKeyDown(e) {
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        if (e.key === 'Delete' && selectedMapping) {
+            e.preventDefault();
+            const [index, subIndex] = selectedMapping.key.split('/').map(Number);
+            handleRemoveMapping(selectedMapping.pdoId, { index, subIndex });
+            setSelectedMapping(null);
+        }
+    }
 
     // ── Add / delete PDO ──────────────────────────────────────────────────
 
@@ -387,7 +463,11 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
         <div className={styles.page}>
             {/* Top section: available objects + comm params */}
             <div className={styles['top-section']}>
-                <AvailableObjects objects={objects} />
+                <AvailableObjects
+                    objects={objects}
+                    onItemDragStart={item => { draggedItemRef.current = item; }}
+                    onItemDragEnd={() => { draggedItemRef.current = null; }}
+                />
 
                 <div className={styles['right-section']}>
                     <CommParams
@@ -412,17 +492,26 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
             {/* PDO grid */}
             <div className={styles['grid-section']}>
                 <div className={styles['grid-title']}>{title}</div>
-                <div className={styles['grid-scroll']}>
+                <div
+                    className={styles['grid-scroll']}
+                    tabIndex={0}
+                    onKeyDown={handleKeyDown}
+                >
                     <PdoGrid
                         pdos={pdos}
                         selectedPdoId={selectedPdoId}
                         objects={objects}
-                        onSelectPdo={setSelectedPdoId}
+                        selectedMapping={selectedMapping}
+                        draggedItemRef={draggedItemRef}
+                        onSelectPdo={handleSelectPdo}
+                        onSelectMapping={handleSelectMapping}
                         onDropObject={handleDropObject}
-                        onRemoveMapping={handleRemoveMapping}
+                        onMappingContextMenu={handleMappingContextMenu}
                     />
                 </div>
             </div>
+
+            {menuElement}
         </div>
     );
 }
