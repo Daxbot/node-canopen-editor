@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@canopen-editor/renderer": "workspace:*",
+    "canopen-eds": "^0.3.0",
+    "canopen-xdd": "^0.3.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

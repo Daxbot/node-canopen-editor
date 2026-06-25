@@ -4,6 +4,7 @@ import {
     DataTypeName,
     AccessType,
     isContainerType,
+    isStringType,
     createSubEntry,
 } from '../../../../lib/eds/index.js';
 import styles from './ObjectDetail.module.css';
@@ -51,7 +52,7 @@ function FieldRow({ label, children }) {
 
 // ─── VAR entry editor ─────────────────────────────────────────────────────────
 
-function VarEditor({ entry, onChange }) {
+function VarEditor({ entry, onChange, topLevel = false }) {
     function set(key, val) { onChange({ ...entry, [key]: val }); }
 
     return (
@@ -100,6 +101,17 @@ function VarEditor({ entry, onChange }) {
                     placeholder="Optional"
                 />
             </FieldRow>
+            {isStringType(entry.dataType) && (
+                <FieldRow label="String Len Min">
+                    <input
+                        type="number"
+                        min="0"
+                        value={entry.stringLength ?? ''}
+                        onChange={e => set('stringLength', e.target.value === '' ? undefined : Number(e.target.value))}
+                        placeholder="Optional"
+                    />
+                </FieldRow>
+            )}
             <FieldRow label="Low Limit">
                 <input
                     value={entry.lowLimit ?? ''}
@@ -124,6 +136,15 @@ function VarEditor({ entry, onChange }) {
                     <span>Mappable to PDO</span>
                 </label>
             </FieldRow>
+            {topLevel && (
+                <FieldRow label="Storage Group">
+                    <input
+                        value={entry.storageLocation ?? ''}
+                        onChange={e => set('storageLocation', e.target.value || undefined)}
+                        placeholder="RAM"
+                    />
+                </FieldRow>
+            )}
         </div>
     );
 }
@@ -218,6 +239,13 @@ function ContainerEditor({ entry, onChange }) {
                         {ObjectTypeName[entry.objectType] ?? entry.objectType}
                     </span>
                 </FieldRow>
+                <FieldRow label="Storage Group">
+                    <input
+                        value={entry.storageLocation ?? ''}
+                        onChange={e => setEntry('storageLocation', e.target.value || undefined)}
+                        placeholder="RAM"
+                    />
+                </FieldRow>
             </div>
 
             {/* Sub-objects table */}
@@ -288,7 +316,7 @@ export default function ObjectDetail({ index, entry, onChange }) {
             <div className={styles['panel-body']}>
                 {container
                     ? <ContainerEditor entry={entry} onChange={onChange} />
-                    : <VarEditor entry={entry} onChange={onChange} />
+                    : <VarEditor entry={entry} onChange={onChange} topLevel />
                 }
             </div>
         </div>
