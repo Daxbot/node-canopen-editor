@@ -5,6 +5,11 @@
  * Write triggers a browser download — there is no concept of overwriting a
  * path in place, so the `path` argument is ignored.
  */
+
+// Custom web clipboard format. The async Clipboard API requires the "web "
+// prefix to carry an application-specific MIME type across tabs.
+const WEB_CLIPBOARD_FORMAT = 'web application/x-canopen-object+json';
+
 export const browserFileService = {
     isDesktop: false,
 
@@ -50,5 +55,40 @@ export const browserFileService = {
         URL.revokeObjectURL(url);
         // Downloads have no on-disk path to report back.
         return Promise.resolve({ name: suggestedName, path: null });
+    },
+
+    // ─── Clipboard (JSON object dictionary entries) ────────────────────────────
+
+    async writeClipboardObject(payload) {
+        const json = JSON.stringify(payload);
+        // Write under our custom web format (cross-tab) plus a text/plain copy as
+        // a same-engine fallback and a debugging aid.
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                // The ClipboardItem key carries the custom "web …" format; the Blob
+                // itself just holds the JSON bytes.
+                [WEB_CLIPBOARD_FORMAT]: new Blob([json], { type: 'application/json' }),
+                'text/plain': new Blob([json], { type: 'text/plain' }),
+            }),
+        ]);
+    },
+
+    async readClipboardObject() {
+        try {
+            const items = await navigator.clipboard.read();
+            for (const item of items) {
+                const type = item.types.includes(WEB_CLIPBOARD_FORMAT)
+                    ? WEB_CLIPBOARD_FORMAT
+                    : item.types.includes('text/plain')
+                        ? 'text/plain'
+                        : null;
+                if (!type) continue;
+                const text = await (await item.getType(type)).text();
+                return JSON.parse(text);
+            }
+        } catch {
+            // No readable clipboard data, denied permission, or non-JSON content.
+        }
+        return null;
     },
 };

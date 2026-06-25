@@ -143,6 +143,8 @@
     flex-direction: column;
 }
 
+.sub-list:focus { outline: none; }
+
 .sub-list-header {
     display: grid;
     grid-template-columns: 48px 1fr 130px 70px 24px;

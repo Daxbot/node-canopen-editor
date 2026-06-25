@@ -1,6 +1,9 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, clipboard } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
+
+// Custom OS clipboard format for object-dictionary entries (cross-instance).
+const CANOPEN_CLIPBOARD_FORMAT = 'application/x-canopen-object+json'
 
 let mainWindow = null
 
@@ -103,6 +106,40 @@ ipcMain.handle(
     return { name: basename(outPath), path: outPath }
   },
 )
+
+// ─── IPC: clipboard (object dictionary entries) ────────────────────────────
+
+ipcMain.handle('clipboard:write', (_event, json) => {
+  clipboard.writeBuffer(CANOPEN_CLIPBOARD_FORMAT, Buffer.from(json, 'utf8'))
+})
+
+ipcMain.handle('clipboard:read', () => {
+  const buf = clipboard.readBuffer(CANOPEN_CLIPBOARD_FORMAT)
+  return buf && buf.length ? buf.toString('utf8') : null
+})
+
+// ─── IPC: native context menu ──────────────────────────────────────────────
+
+ipcMain.handle('menu:context', (event, items = []) => {
+  return new Promise((resolve) => {
+    let settled = false
+    const settle = (value) => {
+      if (settled) return
+      settled = true
+      resolve(value)
+    }
+    const template = items.map((item) =>
+      item.type === 'separator'
+        ? { type: 'separator' }
+        : { label: item.label, enabled: item.enabled !== false, click: () => settle(item.id) },
+    )
+    const menu = Menu.buildFromTemplate(template)
+    // If the menu closes without a selection, resolve null (deferred so the
+    // item click handler wins the race when one fired).
+    menu.on('menu-will-close', () => setImmediate(() => settle(null)))
+    menu.popup({ window: BrowserWindow.fromWebContents(event.sender) })
+  })
+})
 
 // ─── App lifecycle ─────────────────────────────────────────────────────────
 

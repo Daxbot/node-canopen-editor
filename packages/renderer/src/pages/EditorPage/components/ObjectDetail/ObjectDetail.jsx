@@ -7,6 +7,11 @@ import {
     isStringType,
     createSubEntry,
 } from '../../../../lib/eds/index.js';
+import {
+    buildSubObjectPayload, isValidPayload, CLIPBOARD_KIND,
+} from '../../../../lib/clipboard.js';
+import { useFileService } from '../../../../platform/FileServiceContext.jsx';
+import { useContextMenu } from '../../hooks/useContextMenu.jsx';
 import styles from './ObjectDetail.module.css';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -151,11 +156,12 @@ function VarEditor({ entry, onChange, topLevel = false }) {
 
 // ─── Sub-object row (inline in table) ────────────────────────────────────────
 
-function SubObjectRow({ subIndex, sub, selected, onSelect, onDelete }) {
+function SubObjectRow({ subIndex, sub, selected, onSelect, onDelete, onContextMenu }) {
     return (
         <button
             className={`${styles['sub-row']} ${selected ? styles['sub-selected'] : ''}`}
             onClick={() => onSelect(subIndex)}
+            onContextMenu={e => onContextMenu(subIndex, e)}
         >
             <span className={styles['sub-idx']}>{hexSub(subIndex)}</span>
             <span className={styles['sub-name']}>{sub.parameterName}</span>
@@ -179,6 +185,8 @@ function SubObjectRow({ subIndex, sub, selected, onSelect, onDelete }) {
 // ─── Container entry editor (ARRAY / RECORD) ──────────────────────────────────
 
 function ContainerEditor({ entry, onChange }) {
+    const fileService = useFileService();
+    const { openMenu, menuElement } = useContextMenu();
     const [selectedSub, setSelectedSub] = useState(null);
 
     const subObjects = entry.subObjects ?? {};
@@ -193,23 +201,23 @@ function ContainerEditor({ entry, onChange }) {
         });
     }
 
-    function addSubObject() {
+    // Append a sub-object at the next free sub-index, keeping sub 0's max-index.
+    function appendSub(sub) {
         const next = subIndices.length > 0 ? Math.max(...subIndices) + 1 : 1;
-        const newSub = createSubEntry(`Sub-object ${next}`);
-        const updatedSubs = { ...entry.subObjects, [next]: newSub };
-        // Update sub 0 max-sub-index
+        const updatedSubs = { ...entry.subObjects, [next]: structuredClone(sub) };
         if (updatedSubs[0]) {
-            updatedSubs[0] = {
-                ...updatedSubs[0],
-                defaultValue: String(next),
-            };
+            updatedSubs[0] = { ...updatedSubs[0], defaultValue: String(next) };
         }
         onChange({ ...entry, subObjects: updatedSubs });
         setSelectedSub(next);
     }
 
-    function deleteSubObject(subIdx) {
-        if (!window.confirm(`Delete sub-object ${hexSub(subIdx)}?`)) return;
+    function addSubObject() {
+        const next = subIndices.length > 0 ? Math.max(...subIndices) + 1 : 1;
+        appendSub(createSubEntry(`Sub-object ${next}`));
+    }
+
+    function removeSubObject(subIdx) {
         const updated = { ...entry.subObjects };
         delete updated[subIdx];
         // Update max sub-index in sub0
@@ -220,6 +228,66 @@ function ContainerEditor({ entry, onChange }) {
         }
         onChange({ ...entry, subObjects: updated });
         if (selectedSub === subIdx) setSelectedSub(null);
+    }
+
+    function deleteSubObject(subIdx) {
+        if (!window.confirm(`Delete sub-object ${hexSub(subIdx)}?`)) return;
+        removeSubObject(subIdx);
+    }
+
+    // ─── Clipboard (sub-objects) ─────────────────────────────────────────────
+
+    async function handleCopySub(subIdx) {
+        if (subIdx == null || !subObjects[subIdx]) return;
+        await fileService.writeClipboardObject(buildSubObjectPayload(subIdx, subObjects[subIdx]));
+    }
+
+    async function handleCutSub(subIdx) {
+        // Sub 0 (max-sub-index) is structural and never cut.
+        if (subIdx == null || subIdx === 0 || !subObjects[subIdx]) return;
+        await handleCopySub(subIdx);
+        removeSubObject(subIdx);
+    }
+
+    async function handlePasteSub() {
+        const payload = await fileService.readClipboardObject();
+        if (!isValidPayload(payload) || payload.kind !== CLIPBOARD_KIND.SUB_OBJECT) return;
+        appendSub(payload.sub);
+    }
+
+    function subMenuItems(subIdx) {
+        const items = [
+            { id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', disabled: subIdx === 0, onSelect: () => handleCutSub(subIdx) },
+            { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', onSelect: () => handleCopySub(subIdx) },
+            { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => handlePasteSub() },
+        ];
+        if (subIdx !== 0) {
+            items.push({ type: 'separator' });
+            items.push({ id: 'delete', label: 'Delete', shortcut: 'Del', danger: true, onSelect: () => deleteSubObject(subIdx) });
+        }
+        return items;
+    }
+
+    function handleSubContextMenu(subIdx, e) {
+        setSelectedSub(subIdx);
+        openMenu(e, subMenuItems(subIdx));
+    }
+
+    function handleSubListContextMenu(e) {
+        // Only fires on empty list space (rows stop propagation).
+        openMenu(e, [
+            { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => handlePasteSub() },
+        ]);
+    }
+
+    function handleSubKeyDown(e) {
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        const mod = e.ctrlKey || e.metaKey;
+        if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); handleCopySub(selectedSub); }
+        else if (mod && e.key.toLowerCase() === 'x') { e.preventDefault(); handleCutSub(selectedSub); }
+        else if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); handlePasteSub(); }
+        else if (e.key === 'Delete' && selectedSub != null && selectedSub !== 0) { e.preventDefault(); deleteSubObject(selectedSub); }
     }
 
     const activeSub = selectedSub != null ? subObjects[selectedSub] : null;
@@ -254,7 +322,12 @@ function ContainerEditor({ entry, onChange }) {
                     <span>Sub-objects</span>
                     <button className="primary" onClick={addSubObject}>+ Add</button>
                 </div>
-                <div className={styles['sub-list']}>
+                <div
+                    className={styles['sub-list']}
+                    tabIndex={0}
+                    onKeyDown={handleSubKeyDown}
+                    onContextMenu={handleSubListContextMenu}
+                >
                     <div className={styles['sub-list-header']}>
                         <span>Sub</span>
                         <span>Name</span>
@@ -270,6 +343,7 @@ function ContainerEditor({ entry, onChange }) {
                             selected={selectedSub === sub}
                             onSelect={setSelectedSub}
                             onDelete={deleteSubObject}
+                            onContextMenu={handleSubContextMenu}
                         />
                     ))}
                 </div>
@@ -287,6 +361,8 @@ function ContainerEditor({ entry, onChange }) {
                     />
                 </div>
             )}
+
+            {menuElement}
         </div>
     );
 }

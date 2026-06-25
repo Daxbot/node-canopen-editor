@@ -23,6 +23,18 @@ import { createContext, useContext } from 'react';
  *     //   path null -> Save dialog (desktop) / browser download (web)
  *     // Resolves to { name, path } on success or null if cancelled.
  *     writeFile({ path, suggestedName, content, contentType, extensions }): Promise<SaveResult | null>,
+ *
+ *     // Object-dictionary clipboard. The payload is the JSON envelope from
+ *     // lib/clipboard.js; transport (custom MIME / OS clipboard format) is the
+ *     // service's concern, the renderer owns the schema.
+ *     writeClipboardObject(payload): Promise<void>,
+ *     readClipboardObject(): Promise<payload | null>,   // null if no usable data
+ *
+ *     // Optional, desktop only (mirrors onMenuCommand): show a native OS context
+ *     // menu. `items` is a serialisable template [{ id, label, enabled } | { type:'separator' }].
+ *     // Resolves to the chosen item id, or null if dismissed. When absent (web),
+ *     // the renderer falls back to a custom in-DOM context menu.
+ *     showNativeContextMenu?(items): Promise<string | null>,
  *   }
  */
 const FileServiceContext = createContext(null);

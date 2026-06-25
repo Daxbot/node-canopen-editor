@@ -37,6 +37,8 @@
     overflow-y: auto;
 }
 
+.list:focus { outline: none; }
+
 /* ─── Category section ─────────────────────────────────────── */
 
 .category-section {

@@ -87,6 +87,13 @@ read/write primitives:
   (desktop) / browser download (web). Export always passes `path: null`.
 - optional `onMenuCommand(cb)` — desktop only; wires native menu / accelerators (New, Open,
   Save, Export) back into `EditorPage`.
+- `writeClipboardObject(payload)` / `readClipboardObject()` → object-dictionary clipboard
+  (cut/copy/paste). The renderer owns the JSON envelope schema (`lib/clipboard.js`); the
+  service only carries it across the OS clipboard under a custom format (web: a `"web …"`
+  ClipboardItem MIME; desktop: an Electron `clipboard` buffer format).
+- optional `showNativeContextMenu(items)` — desktop only; pops a native OS context menu and
+  resolves to the chosen item id. Absent on web, where the renderer falls back to a custom
+  in-DOM `ContextMenu`. Both paths are unified by the `useContextMenu` hook.
 
 Each app provides the implementation and injects it at its entry point via
 `<FileServiceProvider value={service}>`:
@@ -96,8 +103,8 @@ Each app provides the implementation and injects it at its entry point via
 - `apps/desktop/src/platform/electronFileService.js` — delegates to `window.electronAPI`
   (the preload bridge → IPC → `dialog`/`fs` in `apps/desktop/electron/main.js`).
 
-When adding a file operation, add the primitive to **both** services and the `FileService`
-doc comment; don't reach for browser or Electron APIs inside the renderer.
+When adding a platform primitive (file, clipboard, menu), add it to **both** services and the
+`FileService` doc comment; don't reach for browser or Electron APIs inside the renderer.
 
 ### Electron security
 

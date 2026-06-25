@@ -4,6 +4,12 @@ import {
     createVarEntry, createArrayEntry, createRecordEntry,
     ObjectType, ObjectTypeName, DataTypeName,
 } from '../../../../lib/eds/index.js';
+import {
+    buildObjectPayload, isValidPayload, CLIPBOARD_KIND,
+} from '../../../../lib/clipboard.js';
+import { useFileService } from '../../../../platform/FileServiceContext.jsx';
+import { useContextMenu } from '../../hooks/useContextMenu.jsx';
+import OverwriteDialog from '../OverwriteDialog/OverwriteDialog.jsx';
 import styles from './ObjectList.module.css';
 
 // ─── Add Entry Modal ──────────────────────────────────────────────────────────
@@ -84,7 +90,7 @@ function AddEntryModal({ onAdd, onClose, existingIndices }) {
 
 // ─── Category Section ─────────────────────────────────────────────────────────
 
-function CategorySection({ category, entries, selectedIndex, onSelect }) {
+function CategorySection({ category, entries, selectedIndex, onSelect, onRowContextMenu }) {
     const [collapsed, setCollapsed] = useState(false);
 
     return (
@@ -107,6 +113,7 @@ function CategorySection({ category, entries, selectedIndex, onSelect }) {
                             key={index}
                             className={`${styles.row} ${selectedIndex === index ? styles.selected : ''}`}
                             onClick={() => onSelect(index)}
+                            onContextMenu={e => onRowContextMenu(index, e)}
                         >
                             <span className={styles['row-index']}>
                                 {`0x${index.toString(16).toUpperCase().padStart(4, '0')}`}
@@ -136,8 +143,11 @@ function CategorySection({ category, entries, selectedIndex, onSelect }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ObjectList({ objects, selectedIndex, onSelect, onObjectsChange }) {
+    const fileService = useFileService();
+    const { openMenu, menuElement } = useContextMenu();
     const [search, setSearch] = useState('');
     const [showAdd, setShowAdd] = useState(false);
+    const [pendingPaste, setPendingPaste] = useState(null); // { index, entry } awaiting overwrite confirm
 
     const existingIndices = useMemo(() => new Set(Object.keys(objects).map(Number)), [objects]);
 
@@ -170,14 +180,78 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
         onSelect(idx);
     }
 
-    function handleDelete(index) {
-        if (!window.confirm(
-            `Delete object 0x${index.toString(16).toUpperCase().padStart(4, '0')}?`
-        )) return;
+    function removeObject(index) {
         const updated = { ...objects };
         delete updated[index];
         onObjectsChange(updated);
         if (selectedIndex === index) onSelect(null);
+    }
+
+    function handleDelete(index) {
+        if (!window.confirm(
+            `Delete object 0x${index.toString(16).toUpperCase().padStart(4, '0')}?`
+        )) return;
+        removeObject(index);
+    }
+
+    // ─── Clipboard ──────────────────────────────────────────────────────────
+
+    async function handleCopy(index) {
+        if (index == null || !objects[index]) return;
+        await fileService.writeClipboardObject(buildObjectPayload(index, objects[index]));
+    }
+
+    async function handleCut(index) {
+        if (index == null || !objects[index]) return;
+        await handleCopy(index);
+        removeObject(index);
+    }
+
+    function insertObject(index, entry) {
+        onObjectsChange({ ...objects, [index]: structuredClone(entry) });
+        onSelect(index);
+    }
+
+    async function handlePaste() {
+        const payload = await fileService.readClipboardObject();
+        if (!isValidPayload(payload) || payload.kind !== CLIPBOARD_KIND.OBJECT) return;
+        if (objects[payload.index]) {
+            setPendingPaste({ index: payload.index, entry: payload.entry });
+        } else {
+            insertObject(payload.index, payload.entry);
+        }
+    }
+
+    function rowMenuItems(index) {
+        return [
+            { id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', onSelect: () => handleCut(index) },
+            { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', onSelect: () => handleCopy(index) },
+            { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => handlePaste() },
+            { type: 'separator' },
+            { id: 'delete', label: 'Delete', shortcut: 'Del', danger: true, onSelect: () => handleDelete(index) },
+        ];
+    }
+
+    function handleRowContextMenu(index, e) {
+        onSelect(index);
+        openMenu(e, rowMenuItems(index));
+    }
+
+    function handleListContextMenu(e) {
+        // Only fires for clicks on empty list space (rows stop propagation).
+        openMenu(e, [
+            { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => handlePaste() },
+        ]);
+    }
+
+    function handleKeyDown(e) {
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        const mod = e.ctrlKey || e.metaKey;
+        if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); handleCopy(selectedIndex); }
+        else if (mod && e.key.toLowerCase() === 'x') { e.preventDefault(); handleCut(selectedIndex); }
+        else if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); handlePaste(); }
+        else if (e.key === 'Delete' && selectedIndex != null) { e.preventDefault(); handleDelete(selectedIndex); }
     }
 
     return (
@@ -201,7 +275,12 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
                 )}
             </div>
 
-            <div className={styles.list}>
+            <div
+                className={styles.list}
+                tabIndex={0}
+                onKeyDown={handleKeyDown}
+                onContextMenu={handleListContextMenu}
+            >
                 {CATEGORIES.map(cat => (
                     categorised[cat.key]?.length > 0 && (
                         <CategorySection
@@ -210,6 +289,7 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
                             entries={categorised[cat.key]}
                             selectedIndex={selectedIndex}
                             onSelect={onSelect}
+                            onRowContextMenu={handleRowContextMenu}
                         />
                     )
                 ))}
@@ -222,6 +302,19 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
                     onClose={() => setShowAdd(false)}
                 />
             )}
+
+            {pendingPaste && (
+                <OverwriteDialog
+                    index={pendingPaste.index}
+                    onOverwrite={() => {
+                        insertObject(pendingPaste.index, pendingPaste.entry);
+                        setPendingPaste(null);
+                    }}
+                    onCancel={() => setPendingPaste(null)}
+                />
+            )}
+
+            {menuElement}
         </div>
     );
 }
