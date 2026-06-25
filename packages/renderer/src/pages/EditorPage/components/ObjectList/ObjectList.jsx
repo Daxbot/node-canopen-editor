@@ -225,11 +225,7 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
         if (objects[payload.index]) {
             const ok = await dialog.confirm({
                 title: 'Object already exists',
-                message: (
-                    <>An object already exists at index{' '}
-                        <span className={styles['dialog-index']}>{hexIndex(payload.index)}</span>.
-                        {' '}Overwrite it with the pasted object?</>
-                ),
+                message: `An object already exists at index ${hexIndex(payload.index)}. Overwrite it with the pasted object?`,
                 confirmLabel: 'Overwrite',
                 danger: true,
             });

@@ -36,6 +36,11 @@ export const electronFileService = {
         return window.electronAPI.showContextMenu(items);
     },
 
+    // Native message dialog (confirm / alert); resolves to a boolean.
+    showNativeDialog(opts) {
+        return window.electronAPI.showDialog(opts);
+    },
+
     // Native menu / keyboard accelerators (New, Open, Save, Export).
     onMenuCommand(callback) {
         return window.electronAPI.onMenuCommand(callback);

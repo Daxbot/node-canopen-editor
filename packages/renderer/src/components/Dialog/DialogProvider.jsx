@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- context module exports a provider component alongside its hook */
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { useFileService } from '../../platform/FileServiceContext.jsx';
 import Dialog from './Dialog.jsx';
 
 /**
@@ -10,23 +11,32 @@ import Dialog from './Dialog.jsx';
  *   await dialog.alert({ title, message });          // or dialog.alert('message')
  *
  * confirm() resolves to true/false; alert() resolves once dismissed.
+ *
+ * When the platform FileService exposes showNativeDialog (desktop), it routes to
+ * the native OS dialog; otherwise (web) it renders the custom DOM <Dialog>.
+ * Messages must be plain strings so the native path can render them.
  */
 const DialogContext = createContext(null);
 
 export function DialogProvider({ children }) {
+    const fileService = useFileService();
     const [dialog, setDialog] = useState(null);
 
-    const confirm = useCallback((opts) => new Promise((resolve) => {
-        setDialog({
-            title: 'Confirm', confirmLabel: 'OK', cancelLabel: 'Cancel', danger: false,
-            ...opts, resolve,
-        });
-    }), []);
+    const confirm = useCallback((opts) => {
+        const o = { title: 'Confirm', confirmLabel: 'OK', cancelLabel: 'Cancel', danger: false, ...opts };
+        if (fileService.showNativeDialog) {
+            return fileService.showNativeDialog({ kind: 'confirm', ...o });
+        }
+        return new Promise((resolve) => setDialog({ ...o, resolve }));
+    }, [fileService]);
 
-    const alert = useCallback((opts) => new Promise((resolve) => {
-        const o = typeof opts === 'string' ? { message: opts } : opts;
-        setDialog({ title: 'Notice', confirmLabel: 'OK', cancelLabel: null, ...o, resolve });
-    }), []);
+    const alert = useCallback((opts) => {
+        const o = { title: 'Notice', confirmLabel: 'OK', ...(typeof opts === 'string' ? { message: opts } : opts) };
+        if (fileService.showNativeDialog) {
+            return fileService.showNativeDialog({ kind: 'alert', ...o });
+        }
+        return new Promise((resolve) => setDialog({ ...o, cancelLabel: null, resolve }));
+    }, [fileService]);
 
     const api = useMemo(() => ({ confirm, alert }), [confirm, alert]);
 

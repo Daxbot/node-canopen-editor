@@ -118,6 +118,26 @@ ipcMain.handle('clipboard:read', () => {
   return buf && buf.length ? buf.toString('utf8') : null
 })
 
+// ─── IPC: native message dialog ────────────────────────────────────────────
+
+ipcMain.handle(
+  'dialog:message',
+  async (event, { kind = 'confirm', title, message, confirmLabel = 'OK', cancelLabel = 'Cancel', danger = false } = {}) => {
+    const isConfirm = kind === 'confirm'
+    const buttons = isConfirm ? [confirmLabel, cancelLabel] : [confirmLabel]
+    const { response } = await dialog.showMessageBox(BrowserWindow.fromWebContents(event.sender), {
+      type: danger ? 'warning' : isConfirm ? 'question' : 'info',
+      message: title || '',
+      detail: message,
+      buttons,
+      defaultId: 0,
+      cancelId: isConfirm ? 1 : 0,
+      noLink: true,
+    })
+    return isConfirm ? response === 0 : true
+  },
+)
+
 // ─── IPC: native context menu ──────────────────────────────────────────────
 
 ipcMain.handle('menu:context', (event, items = []) => {

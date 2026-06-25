@@ -35,6 +35,12 @@ import { createContext, useContext } from 'react';
  *     // Resolves to the chosen item id, or null if dismissed. When absent (web),
  *     // the renderer falls back to a custom in-DOM context menu.
  *     showNativeContextMenu?(items): Promise<string | null>,
+ *
+ *     // Optional, desktop only: show a native OS message dialog.
+ *     // { kind: 'confirm' | 'alert', title, message, confirmLabel, cancelLabel, danger }.
+ *     // Resolves to a boolean (confirm: accepted?; alert: always true). When absent
+ *     // (web), the renderer falls back to a custom in-DOM <Dialog> via useDialog().
+ *     showNativeDialog?(options): Promise<boolean>,
  *   }
  */
 const FileServiceContext = createContext(null);

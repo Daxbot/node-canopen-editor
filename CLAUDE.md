@@ -94,6 +94,10 @@ read/write primitives:
 - optional `showNativeContextMenu(items)` — desktop only; pops a native OS context menu and
   resolves to the chosen item id. Absent on web, where the renderer falls back to a custom
   in-DOM `ContextMenu`. Both paths are unified by the `useContextMenu` hook.
+- optional `showNativeDialog(options)` — desktop only; shows a native OS confirm/alert
+  (`dialog.showMessageBox`) and resolves to a boolean. Absent on web, where the renderer falls
+  back to a custom in-DOM `Dialog`. Both paths are unified by the `useDialog` hook; dialog
+  messages must be plain strings so the native path can render them.
 
 Each app provides the implementation and injects it at its entry point via
 `<FileServiceProvider value={service}>`:
