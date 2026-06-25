@@ -1,0 +1,71 @@
+name: Desktop Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifacts: |
+              apps/desktop/release/*.AppImage
+              apps/desktop/release/*.deb
+              apps/desktop/release/*.flatpak
+          - os: macos-latest
+            artifacts: |
+              apps/desktop/release/*.dmg
+          - os: windows-latest
+            artifacts: |
+              apps/desktop/release/*.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # The flatpak target shells out to flatpak-builder and needs the runtime,
+      # SDK and Electron base app for the version pinned in electron-builder.yml
+      # (25.08 — the default 20.08 is EOL). Linux only.
+      - name: Install flatpak toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub \
+            org.freedesktop.Platform//25.08 \
+            org.freedesktop.Sdk//25.08 \
+            org.electronjs.Electron2.BaseApp//25.08
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build renderer + main/preload
+        run: pnpm --filter @canopen-editor/desktop compile
+
+      - name: Package with electron-builder
+        run: pnpm --filter @canopen-editor/desktop exec electron-builder --publish never
+        env:
+          # No Apple signing identity configured in CI — don't attempt to sign.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error
