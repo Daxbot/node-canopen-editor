@@ -8,9 +8,13 @@ import {
     buildObjectPayload, isValidPayload, CLIPBOARD_KIND,
 } from '../../../../lib/clipboard.js';
 import { useFileService } from '../../../../platform/FileServiceContext.jsx';
+import { useDialog } from '../../../../components/Dialog/DialogProvider.jsx';
 import { useContextMenu } from '../../hooks/useContextMenu.jsx';
-import OverwriteDialog from '../OverwriteDialog/OverwriteDialog.jsx';
 import styles from './ObjectList.module.css';
+
+function hexIndex(index) {
+    return `0x${Number(index).toString(16).toUpperCase().padStart(4, '0')}`;
+}
 
 // ─── Add Entry Modal ──────────────────────────────────────────────────────────
 
@@ -144,10 +148,10 @@ function CategorySection({ category, entries, selectedIndex, onSelect, onRowCont
 
 export default function ObjectList({ objects, selectedIndex, onSelect, onObjectsChange }) {
     const fileService = useFileService();
+    const dialog = useDialog();
     const { openMenu, menuElement } = useContextMenu();
     const [search, setSearch] = useState('');
     const [showAdd, setShowAdd] = useState(false);
-    const [pendingPaste, setPendingPaste] = useState(null); // { index, entry } awaiting overwrite confirm
 
     const existingIndices = useMemo(() => new Set(Object.keys(objects).map(Number)), [objects]);
 
@@ -187,11 +191,14 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
         if (selectedIndex === index) onSelect(null);
     }
 
-    function handleDelete(index) {
-        if (!window.confirm(
-            `Delete object 0x${index.toString(16).toUpperCase().padStart(4, '0')}?`
-        )) return;
-        removeObject(index);
+    async function handleDelete(index) {
+        const ok = await dialog.confirm({
+            title: 'Delete object',
+            message: `Delete object ${hexIndex(index)}?`,
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (ok) removeObject(index);
     }
 
     // ─── Clipboard ──────────────────────────────────────────────────────────
@@ -216,10 +223,19 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
         const payload = await fileService.readClipboardObject();
         if (!isValidPayload(payload) || payload.kind !== CLIPBOARD_KIND.OBJECT) return;
         if (objects[payload.index]) {
-            setPendingPaste({ index: payload.index, entry: payload.entry });
-        } else {
-            insertObject(payload.index, payload.entry);
+            const ok = await dialog.confirm({
+                title: 'Object already exists',
+                message: (
+                    <>An object already exists at index{' '}
+                        <span className={styles['dialog-index']}>{hexIndex(payload.index)}</span>.
+                        {' '}Overwrite it with the pasted object?</>
+                ),
+                confirmLabel: 'Overwrite',
+                danger: true,
+            });
+            if (!ok) return;
         }
+        insertObject(payload.index, payload.entry);
     }
 
     function rowMenuItems(index) {
@@ -300,17 +316,6 @@ export default function ObjectList({ objects, selectedIndex, onSelect, onObjects
                     existingIndices={existingIndices}
                     onAdd={handleAdd}
                     onClose={() => setShowAdd(false)}
-                />
-            )}
-
-            {pendingPaste && (
-                <OverwriteDialog
-                    index={pendingPaste.index}
-                    onOverwrite={() => {
-                        insertObject(pendingPaste.index, pendingPaste.entry);
-                        setPendingPaste(null);
-                    }}
-                    onCancel={() => setPendingPaste(null)}
                 />
             )}
 

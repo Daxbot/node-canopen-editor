@@ -11,6 +11,7 @@ import {
     buildSubObjectPayload, isValidPayload, CLIPBOARD_KIND,
 } from '../../../../lib/clipboard.js';
 import { useFileService } from '../../../../platform/FileServiceContext.jsx';
+import { useDialog } from '../../../../components/Dialog/DialogProvider.jsx';
 import { useContextMenu } from '../../hooks/useContextMenu.jsx';
 import styles from './ObjectDetail.module.css';
 
@@ -186,6 +187,7 @@ function SubObjectRow({ subIndex, sub, selected, onSelect, onDelete, onContextMe
 
 function ContainerEditor({ entry, onChange }) {
     const fileService = useFileService();
+    const dialog = useDialog();
     const { openMenu, menuElement } = useContextMenu();
     const [selectedSub, setSelectedSub] = useState(null);
 
@@ -230,9 +232,14 @@ function ContainerEditor({ entry, onChange }) {
         if (selectedSub === subIdx) setSelectedSub(null);
     }
 
-    function deleteSubObject(subIdx) {
-        if (!window.confirm(`Delete sub-object ${hexSub(subIdx)}?`)) return;
-        removeSubObject(subIdx);
+    async function deleteSubObject(subIdx) {
+        const ok = await dialog.confirm({
+            title: 'Delete sub-object',
+            message: `Delete sub-object ${hexSub(subIdx)}?`,
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (ok) removeSubObject(subIdx);
     }
 
     // ─── Clipboard (sub-objects) ─────────────────────────────────────────────

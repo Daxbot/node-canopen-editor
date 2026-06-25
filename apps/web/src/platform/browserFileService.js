@@ -65,9 +65,8 @@ export const browserFileService = {
         // a same-engine fallback and a debugging aid.
         await navigator.clipboard.write([
             new ClipboardItem({
-                // The ClipboardItem key carries the custom "web …" format; the Blob
-                // itself just holds the JSON bytes.
-                [WEB_CLIPBOARD_FORMAT]: new Blob([json], { type: 'application/json' }),
+                // Chromium requires each Blob's type to match its ClipboardItem key.
+                [WEB_CLIPBOARD_FORMAT]: new Blob([json], { type: WEB_CLIPBOARD_FORMAT }),
                 'text/plain': new Blob([json], { type: 'text/plain' }),
             }),
         ]);

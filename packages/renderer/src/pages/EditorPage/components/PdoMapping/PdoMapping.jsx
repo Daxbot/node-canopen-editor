@@ -13,6 +13,7 @@ import {
     PDO_MAX_BITS,
     SLOT_COLORS,
 } from '../../../../lib/eds/pdo-display.js';
+import { useDialog } from '../../../../components/Dialog/DialogProvider.jsx';
 import styles from './PdoMapping.module.css';
 
 // ─── Hex formatting helpers ───────────────────────────────────────────────────
@@ -303,6 +304,7 @@ function CommParams({ pdo, onChange }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PdoMapping({ objects, isRx, onObjectsChange }) {
+    const dialog = useDialog();
     const [selectedPdoId, setSelectedPdoId] = useState(null);
 
     const pdos = isRx ? getRxPdos(objects) : getTxPdos(objects);
@@ -322,11 +324,14 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
 
         const used = getMappingBitUsage(pdo.mappings);
         if (used + item.bits > PDO_MAX_BITS) {
-            alert(`Cannot add ${item.bits}-bit object — only ${PDO_MAX_BITS - used} bits remaining in PDO ${pdoId}.`);
+            dialog.alert({
+                title: 'PDO full',
+                message: `Cannot add ${item.bits}-bit object — only ${PDO_MAX_BITS - used} bits remaining in PDO ${pdoId}.`,
+            });
             return;
         }
         if (pdo.mappings.length >= 8) {
-            alert('A PDO can map at most 8 objects.');
+            dialog.alert({ title: 'PDO full', message: 'A PDO can map at most 8 objects.' });
             return;
         }
 
@@ -336,7 +341,7 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
         };
         onObjectsChange(writePdoToObjects(objects, updated, isRx));
         setSelectedPdoId(pdoId);
-    }, [pdos, objects, isRx, onObjectsChange]);
+    }, [pdos, objects, isRx, onObjectsChange, dialog]);
 
     // ── Remove mapping ────────────────────────────────────────────────────
 
@@ -363,9 +368,15 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
         if (last) setSelectedPdoId(last.id);
     }
 
-    function handleDeletePdo() {
+    async function handleDeletePdo() {
         if (!selectedPdoId) return;
-        if (!window.confirm(`Delete PDO ${selectedPdoId}?`)) return;
+        const ok = await dialog.confirm({
+            title: 'Delete PDO',
+            message: `Delete PDO ${selectedPdoId}?`,
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
         onObjectsChange(deletePdo(objects, selectedPdoId, isRx));
         setSelectedPdoId(null);
     }

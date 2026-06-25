@@ -48,15 +48,10 @@
 }
 
 .message {
-    margin: 0;
     font-size: 0.85rem;
     line-height: 1.5;
     color: var(--font-primary-color);
-}
-
-.index {
-    color: var(--font-terciary-color);
-    font-weight: 600;
+    white-space: pre-wrap;
 }
 
 .modal-actions {

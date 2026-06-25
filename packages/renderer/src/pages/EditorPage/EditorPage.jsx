@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { parseEds, serializeEds, parseXdd, writeXdd, createEmptyEds, exportOD } from '../../lib/eds/index.js';
 import { useFileService } from '../../platform/FileServiceContext.jsx';
+import { useDialog } from '../../components/Dialog/DialogProvider.jsx';
 import Toolbar from './components/Toolbar/Toolbar.jsx';
 import DeviceInfo from './components/DeviceInfo/DeviceInfo.jsx';
 import ObjectList from './components/ObjectList/ObjectList.jsx';
@@ -10,6 +11,7 @@ import styles from './EditorPage.module.css';
 
 export default function EditorPage() {
     const fileService = useFileService();
+    const dialog = useDialog();
     const [eds, setEds] = useState(null);
     const [fileName, setFileName] = useState(null);
     const [filePath, setFilePath] = useState(null); // on-disk path (desktop only); null on web
@@ -20,24 +22,31 @@ export default function EditorPage() {
 
     // ─── File operations ───────────────────────────────────────────────────
 
-    const handleNew = useCallback(() => {
-        if (isDirty && !window.confirm('Discard unsaved changes?')) return;
+    const confirmDiscard = useCallback(() => dialog.confirm({
+        title: 'Discard changes',
+        message: 'Discard unsaved changes?',
+        confirmLabel: 'Discard',
+        danger: true,
+    }), [dialog]);
+
+    const handleNew = useCallback(async () => {
+        if (isDirty && !(await confirmDiscard())) return;
         setEds(createEmptyEds());
         setFileName('Newdevice.xdd');
         setFilePath(null);
         setFileFormat('xdd');
         setIsDirty(false);
         setSelectedIndex(null);
-    }, [isDirty]);
+    }, [isDirty, confirmDiscard]);
 
     const handleOpen = useCallback(async () => {
-        if (isDirty && !window.confirm('Discard unsaved changes?')) return;
+        if (isDirty && !(await confirmDiscard())) return;
 
         let result;
         try {
             result = await fileService.openTextFile({ extensions: ['eds', 'xdd'] });
         } catch (err) {
-            alert(`Failed to open file:\n${err.message}`);
+            dialog.alert({ title: 'Open failed', message: `Failed to open file:\n${err.message}` });
             return;
         }
         if (!result) return; // cancelled
@@ -53,9 +62,9 @@ export default function EditorPage() {
             setSelectedIndex(null);
         }
         catch (err) {
-            alert(`Failed to parse file:\n${err.message}`);
+            dialog.alert({ title: 'Parse failed', message: `Failed to parse file:\n${err.message}` });
         }
-    }, [isDirty, fileService]);
+    }, [isDirty, confirmDiscard, fileService, dialog]);
 
     const handleSave = useCallback(async () => {
         if (!eds) return;
@@ -74,7 +83,7 @@ export default function EditorPage() {
                 ext = 'eds';
             }
         } catch (err) {
-            alert(`Failed to save file:\n${err.message}`);
+            dialog.alert({ title: 'Save failed', message: `Failed to save file:\n${err.message}` });
             return;
         }
 
@@ -93,9 +102,9 @@ export default function EditorPage() {
             if (result.name) setFileName(result.name);
             setIsDirty(false);
         } catch (err) {
-            alert(`Failed to save file:\n${err.message}`);
+            dialog.alert({ title: 'Save failed', message: `Failed to save file:\n${err.message}` });
         }
-    }, [eds, fileName, fileFormat, filePath, fileService]);
+    }, [eds, fileName, fileFormat, filePath, fileService, dialog]);
 
     const handleExportAs = useCallback(async (format) => {
         if (!eds) return;
@@ -141,9 +150,9 @@ export default function EditorPage() {
                 });
             }
         } catch (err) {
-            alert(`Failed to export:\n${err.message}`);
+            dialog.alert({ title: 'Export failed', message: `Failed to export:\n${err.message}` });
         }
-    }, [eds, fileName, fileService]);
+    }, [eds, fileName, fileService, dialog]);
 
     // ─── Edit helpers ──────────────────────────────────────────────────────
 
