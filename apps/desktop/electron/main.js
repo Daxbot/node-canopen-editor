@@ -1,11 +1,15 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, clipboard } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 // Custom OS clipboard format for object-dictionary entries (cross-instance).
 const CANOPEN_CLIPBOARD_FORMAT = 'application/x-canopen-object+json'
 
 let mainWindow = null
+
+// Directory of the most recently opened/saved document, so the open/save/export
+// dialogs all reopen where the user last was. Null until the first file op.
+let lastDirectory = null
 
 function buildFilters(extensions) {
   if (!extensions || extensions.length === 0) {
@@ -82,11 +86,13 @@ function createWindow() {
 ipcMain.handle('dialog:openFile', async (_event, { extensions = [] } = {}) => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
+    defaultPath: lastDirectory ?? undefined,
     filters: buildFilters(extensions),
   })
   if (canceled || filePaths.length === 0) return null
   const filePath = filePaths[0]
   const content = await readFile(filePath, 'utf8')
+  lastDirectory = dirname(filePath)
   return { name: basename(filePath), path: filePath, content }
 })
 
@@ -95,14 +101,17 @@ ipcMain.handle(
   async (_event, { path: targetPath, suggestedName, content, extensions = [] } = {}) => {
     let outPath = targetPath
     if (!outPath) {
+      const defaultPath =
+        lastDirectory && suggestedName ? join(lastDirectory, suggestedName) : suggestedName
       const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-        defaultPath: suggestedName,
+        defaultPath,
         filters: buildFilters(extensions),
       })
       if (canceled || !filePath) return null
       outPath = filePath
     }
     await writeFile(outPath, content, 'utf8')
+    lastDirectory = dirname(outPath)
     return { name: basename(outPath), path: outPath }
   },
 )
