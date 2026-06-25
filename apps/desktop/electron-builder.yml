@@ -1,9 +1,12 @@
 appId: com.daxbot.canopen-editor
 productName: CANopen Editor
+executableName: canopen-editor
 
 directories:
   output: release
   buildResources: build
+
+artifactName: ${productName}-${version}-${arch}.${ext}
 
 # Everything the app needs at runtime is bundled by electron-vite into out/.
 # There are no production node dependencies, so only the build output ships.
@@ -15,7 +18,26 @@ linux:
   target:
     - AppImage
     - deb
+    - flatpak
   category: Development
+  icon: build/icons
+  # Match the WM_CLASS to the .desktop entry (name set in package.json) so window
+  # managers (and Flatpak) associate running windows with the installed launcher.
+  syncDesktopName: true
+
+# Flatpak bundle (.flatpak). Requires flatpak-builder plus the runtime, SDK and
+# Electron base app installed for the version pinned below:
+#   flatpak install flathub org.freedesktop.Platform//25.08 \
+#     org.freedesktop.Sdk//25.08 org.electronjs.Electron2.BaseApp//25.08
+flatpak:
+  runtimeVersion: "25.08"
+  baseVersion: "25.08"
+  finishArgs:
+    - --socket=wayland
+    - --socket=x11
+    - --share=ipc
+    - --device=dri
+    - --filesystem=home
 
 mac:
   target:

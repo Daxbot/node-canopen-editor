@@ -46,6 +46,9 @@ export default defineConfig({
     build: {
       outDir: 'out/renderer',
       rollupOptions: { input: resolve(__dirname, 'index.html') },
+      commonjsOptions: {
+        include: [/canopen-eds/, /canopen-xdd/, /node_modules/],
+      },
     },
     plugins: [react(), injectCsp()],
     optimizeDeps: {

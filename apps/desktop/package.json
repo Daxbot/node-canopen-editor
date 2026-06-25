@@ -2,9 +2,15 @@
   "name": "@canopen-editor/desktop",
   "private": true,
   "version": "0.1.0",
-  "description": "CANopen editor desktop app (Electron)",
-  "author": "Wilkins White <ww@novadynamics.com>",
+  "description": "CANopen editor desktop app",
+  "author": "Elliot Nash <enash@novadynamics.com>",
+  "homepage": "https://daxbot.com/open-source",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaxBot/node-canopen-editor.git"
+  },
   "main": "./out/main/index.js",
+  "desktopName": "com.daxbot.canopen-editor.desktop",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build && electron-builder",
