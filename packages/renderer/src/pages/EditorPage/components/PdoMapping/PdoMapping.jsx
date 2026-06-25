@@ -46,7 +46,7 @@ function ByteHeader() {
 
 function pct(bits) { return `${(bits / PDO_MAX_BITS) * 100}%`; }
 
-function PdoSlot({ segment, isSelected, onSelect, onContextMenu }) {
+function PdoSlot({ segment, isSelected, onSelect, onContextMenu, onDragStart, onDragEnd }) {
     const style = { left: pct(segment.startBit), width: pct(segment.bits) };
 
     if (segment.isHologram) {
@@ -65,9 +65,12 @@ function PdoSlot({ segment, isSelected, onSelect, onContextMenu }) {
         <div
             className={`${styles.slot} ${isSelected ? styles['slot-selected'] : ''}`}
             style={{ ...style, background: bg }}
+            draggable
             onClick={onSelect}
             onContextMenu={onContextMenu}
-            title={`${segment.label} (${segment.bits} bits) — click to select, Delete to remove`}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            title={`${segment.label} (${segment.bits} bits) — drag to move, click to select, Delete to remove`}
         >
             <span className={styles['slot-text']}>{segment.shortLabel}</span>
         </div>
@@ -85,21 +88,45 @@ function PdoRow({
     const bitsRef = useRef(null);
     const usedBits = getMappingBitUsage(pdo.mappings);
 
-    function insertIndexFromEvent(e) {
-        const rect = bitsRef.current?.getBoundingClientRect();
-        if (!rect || rect.width === 0) return pdo.mappings.length;
-        const fraction = (e.clientX - rect.left) / rect.width;
-        return hoveredInsertIndex(pdo.mappings, fraction);
+    // When an object already mapped in *this* PDO is being dragged, exclude it
+    // from the base mappings so the preview shows it lifted out and sliding.
+    function baseMappingsFor(item) {
+        if (item?.source?.pdoId === pdo.id) {
+            return pdo.mappings.filter(m => `${m.index}/${m.subIndex}` !== item.source.key);
+        }
+        return pdo.mappings;
     }
+
+    function insertIndexFromEvent(e, base) {
+        const rect = bitsRef.current?.getBoundingClientRect();
+        if (!rect || rect.width === 0) return base.length;
+        const fraction = (e.clientX - rect.left) / rect.width;
+        return hoveredInsertIndex(base, fraction);
+    }
+
+    function handleSlotDragStart(e, mapping) {
+        const item = {
+            index: mapping.index,
+            subIndex: mapping.subIndex,
+            bits: mapping.bits,
+            source: { pdoId: pdo.id, key: `${mapping.index}/${mapping.subIndex}` },
+        };
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify(item));
+        draggedItemRef.current = item;
+    }
+
+    function handleSlotDragEnd() { draggedItemRef.current = null; }
 
     function handleDragOver(e) {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
         setDragOver(true);
         const item = draggedItemRef.current;
-        if (!item) return;
-        const insertIndex = insertIndexFromEvent(e);
-        setPreview(buildDragPreview(pdo.mappings, objects, insertIndex, item));
+        if (!item) { e.dataTransfer.dropEffect = 'copy'; return; }
+        e.dataTransfer.dropEffect = item.source ? 'move' : 'copy';
+        const base = baseMappingsFor(item);
+        const insertIndex = insertIndexFromEvent(e, base);
+        setPreview(buildDragPreview(base, objects, insertIndex, item));
     }
 
     function handleDragLeave() { setDragOver(false); setPreview(null); }
@@ -108,12 +135,11 @@ function PdoRow({
         e.preventDefault();
         setDragOver(false);
         setPreview(null);
-        const insertIndex = insertIndexFromEvent(e);
-        try {
-            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-            onDropObject(pdo.id, data, insertIndex);
-        }
-        catch { /* ignore bad data */ }
+        let data;
+        try { data = JSON.parse(e.dataTransfer.getData('text/plain')); }
+        catch { return; }
+        const insertIndex = insertIndexFromEvent(e, baseMappingsFor(data));
+        onDropObject(pdo.id, data, insertIndex);
     }
 
     const segments = preview
@@ -155,6 +181,8 @@ function PdoRow({
                             onSelectMapping(pdo.id, seg.mapping);
                         }}
                         onContextMenu={seg.isHologram ? undefined : (e) => onMappingContextMenu(e, pdo.id, seg.mapping)}
+                        onDragStart={seg.isHologram ? undefined : (e) => handleSlotDragStart(e, seg.mapping)}
+                        onDragEnd={seg.isHologram ? undefined : handleSlotDragEnd}
                     />
                 ))}
             </div>
@@ -370,20 +398,44 @@ export default function PdoMapping({ objects, isRx, onObjectsChange }) {
 
     // ── Drop object onto PDO row ──────────────────────────────────────────
 
-    const handleDropObject = useCallback((pdoId, item, insertIndex) => {
-        const pdo = pdos.find(p => p.id === pdoId);
-        if (!pdo) return;
+    const handleDropObject = useCallback((targetPdoId, item, insertIndex) => {
+        const target = pdos.find(p => p.id === targetPdoId);
+        if (!target) return;
+
+        const src = item.source;
+        const sameTarget = src && src.pdoId === targetPdoId;
+
+        // For a reorder within the same PDO, drop the dragged object out of the
+        // target's mappings first so the capacity check and insertion index line
+        // up with what the preview showed.
+        const targetMappings = sameTarget
+            ? target.mappings.filter(m => `${m.index}/${m.subIndex}` !== src.key)
+            : [...target.mappings];
 
         // Silently reject objects that won't fit — the red overflow hologram
         // shown during the drag already communicated why.
-        const used = getMappingBitUsage(pdo.mappings);
-        if (used + item.bits > PDO_MAX_BITS || pdo.mappings.length >= 8) return;
+        const used = getMappingBitUsage(targetMappings);
+        if (used + item.bits > PDO_MAX_BITS || targetMappings.length >= 8) return;
 
-        const mappings = [...pdo.mappings];
-        const at = insertIndex == null ? mappings.length : insertIndex;
-        mappings.splice(at, 0, { index: item.index, subIndex: item.subIndex, bits: item.bits });
-        onObjectsChange(writePdoToObjects(objects, { ...pdo, mappings }, isRx));
-        setSelectedPdoId(pdoId);
+        const at = insertIndex == null ? targetMappings.length : insertIndex;
+        targetMappings.splice(at, 0, { index: item.index, subIndex: item.subIndex, bits: item.bits });
+
+        let updated = writePdoToObjects(objects, { ...target, mappings: targetMappings }, isRx);
+
+        // Moving across PDOs: also remove the object from its source PDO.
+        if (src && !sameTarget) {
+            const source = pdos.find(p => p.id === src.pdoId);
+            if (source) {
+                const sourceMappings = source.mappings.filter(
+                    m => `${m.index}/${m.subIndex}` !== src.key
+                );
+                updated = writePdoToObjects(updated, { ...source, mappings: sourceMappings }, isRx);
+            }
+        }
+
+        onObjectsChange(updated);
+        setSelectedPdoId(targetPdoId);
+        setSelectedMapping({ pdoId: targetPdoId, key: `${item.index}/${item.subIndex}` });
     }, [pdos, objects, isRx, onObjectsChange]);
 
     // ── Remove mapping ────────────────────────────────────────────────────
