@@ -1,0 +1,242 @@
+.panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    background: var(--bg-secondary-color);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.panel-index {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--font-terciary-color);
+    letter-spacing: 0.06em;
+}
+
+.panel-name {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--font-primary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.panel-type {
+    font-size: 0.72rem;
+    color: var(--font-muted);
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    padding: 2px 8px;
+    letter-spacing: 0.04em;
+}
+
+.panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--font-muted);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* ─── Fields ───────────────────────────────────────────────── */
+
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 600px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.label {
+    font-size: 0.7rem;
+    color: var(--font-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.control {
+    flex: 1;
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    user-select: none;
+}
+
+.check input[type="checkbox"] {
+    width: auto;
+    border: none;
+    accent-color: var(--font-secondary-color);
+    cursor: pointer;
+}
+
+.read-only-value {
+    font-size: 0.875rem;
+    color: var(--font-secondary-color);
+    padding: 4px 0;
+    display: block;
+}
+
+/* ─── Container editor ─────────────────────────────────────── */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.sub-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--bg-secondary-color);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.sub-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--font-muted);
+    text-transform: uppercase;
+}
+
+.sub-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.sub-list:focus { outline: none; }
+
+.sub-list-header {
+    display: grid;
+    grid-template-columns: 48px 1fr 130px 70px 24px;
+    gap: 8px;
+    padding: 6px 14px;
+    font-size: 0.68rem;
+    color: var(--font-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-faint);
+}
+
+.sub-row {
+    display: grid;
+    grid-template-columns: 48px 1fr 130px 70px 24px;
+    gap: 8px;
+    align-items: center;
+    padding: 7px 14px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--border-faint);
+}
+
+.sub-row:last-child { border-bottom: none; }
+.sub-row:hover { background: var(--fg-primary-color); }
+.sub-row.sub-selected { background: rgba(111, 189, 204, 0.1); }
+
+.sub-idx {
+    font-size: 0.78rem;
+    color: var(--font-terciary-color);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.sub-name {
+    font-size: 0.82rem;
+    color: var(--font-primary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sub-row.sub-selected .sub-name { color: var(--font-secondary-color); }
+
+.sub-type {
+    font-size: 0.72rem;
+    color: rgba(111, 189, 204, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sub-access {
+    font-size: 0.72rem;
+    color: var(--font-muted);
+}
+
+.sub-del {
+    font-size: 0.7rem;
+    color: var(--danger-color);
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.sub-del:hover { opacity: 1; }
+
+/* ─── Sub editor ────────────────────────────────────────────── */
+
+.sub-editor {
+    background: var(--fg-primary-color);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sub-editor-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--font-secondary-color);
+    letter-spacing: 0.04em;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}

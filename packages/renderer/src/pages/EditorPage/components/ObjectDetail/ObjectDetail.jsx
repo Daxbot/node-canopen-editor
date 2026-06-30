@@ -1,0 +1,407 @@
+import { useState } from 'react';
+import {
+    ObjectType, ObjectTypeName,
+    DataTypeName,
+    AccessType,
+    isContainerType,
+    isStringType,
+    createSubEntry,
+} from '../../../../lib/eds/index.js';
+import {
+    buildSubObjectPayload, isValidPayload, CLIPBOARD_KIND,
+} from '../../../../lib/clipboard.js';
+import { useFileService } from '../../../../platform/FileServiceContext.jsx';
+import { useDialog } from '../../../../components/Dialog/DialogProvider.jsx';
+import { useContextMenu } from '../../hooks/useContextMenu.jsx';
+import styles from './ObjectDetail.module.css';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const ACCESS_OPTIONS = [
+    AccessType.READ_WRITE,
+    AccessType.READ_ONLY,
+    AccessType.WRITE_ONLY,
+    AccessType.CONSTANT,
+];
+
+const DATA_TYPE_OPTIONS = Object.entries(DataTypeName)
+    .map(([v, k]) => ({ value: Number(v), label: k }))
+    .sort((a, b) => a.value - b.value);
+
+const CONTAINER_OBJECT_TYPES = [
+    ObjectType.VAR,
+    ObjectType.ARRAY,
+    ObjectType.RECORD,
+    ObjectType.DOMAIN,
+    ObjectType.DEFTYPE,
+    ObjectType.DEFSTRUCT,
+];
+
+function hexIndex(index) {
+    return `0x${Number(index).toString(16).toUpperCase().padStart(4, '0')}`;
+}
+
+function hexSub(sub) {
+    return `0x${Number(sub).toString(16).toUpperCase().padStart(2, '0')}`;
+}
+
+// ─── Single field row ─────────────────────────────────────────────────────────
+
+function FieldRow({ label, children }) {
+    return (
+        <div className={styles.field}>
+            <span className={styles.label}>{label}</span>
+            <div className={styles.control}>{children}</div>
+        </div>
+    );
+}
+
+// ─── VAR entry editor ─────────────────────────────────────────────────────────
+
+function VarEditor({ entry, onChange, topLevel = false }) {
+    function set(key, val) { onChange({ ...entry, [key]: val }); }
+
+    return (
+        <div className={styles.fields}>
+            <FieldRow label="Parameter Name">
+                <input
+                    value={entry.parameterName ?? ''}
+                    onChange={e => set('parameterName', e.target.value)}
+                />
+            </FieldRow>
+            <FieldRow label="Object Type">
+                <select
+                    value={entry.objectType ?? ObjectType.VAR}
+                    onChange={e => set('objectType', parseInt(e.target.value, 10))}
+                >
+                    {CONTAINER_OBJECT_TYPES.map(t => (
+                        <option key={t} value={t}>{ObjectTypeName[t] ?? t}</option>
+                    ))}
+                </select>
+            </FieldRow>
+            <FieldRow label="Data Type">
+                <select
+                    value={entry.dataType ?? ''}
+                    onChange={e => set('dataType', parseInt(e.target.value, 10))}
+                >
+                    <option value="">—</option>
+                    {DATA_TYPE_OPTIONS.map(({ value, label }) => (
+                        <option key={value} value={value}>{label}</option>
+                    ))}
+                </select>
+            </FieldRow>
+            <FieldRow label="Access Type">
+                <select
+                    value={entry.accessType ?? AccessType.READ_WRITE}
+                    onChange={e => set('accessType', e.target.value)}
+                >
+                    {ACCESS_OPTIONS.map(a => (
+                        <option key={a} value={a}>{a}</option>
+                    ))}
+                </select>
+            </FieldRow>
+            <FieldRow label="Default Value">
+                <input
+                    value={entry.defaultValue ?? ''}
+                    onChange={e => set('defaultValue', e.target.value)}
+                    placeholder="Optional"
+                />
+            </FieldRow>
+            {isStringType(entry.dataType) && (
+                <FieldRow label="String Len Min">
+                    <input
+                        type="number"
+                        min="0"
+                        value={entry.stringLength ?? ''}
+                        onChange={e => set('stringLength', e.target.value === '' ? undefined : Number(e.target.value))}
+                        placeholder="Optional"
+                    />
+                </FieldRow>
+            )}
+            <FieldRow label="Low Limit">
+                <input
+                    value={entry.lowLimit ?? ''}
+                    onChange={e => set('lowLimit', e.target.value)}
+                    placeholder="Optional"
+                />
+            </FieldRow>
+            <FieldRow label="High Limit">
+                <input
+                    value={entry.highLimit ?? ''}
+                    onChange={e => set('highLimit', e.target.value)}
+                    placeholder="Optional"
+                />
+            </FieldRow>
+            <FieldRow label="PDO Mapping">
+                <label className={styles.check}>
+                    <input
+                        type="checkbox"
+                        checked={!!entry.pdoMapping}
+                        onChange={e => set('pdoMapping', e.target.checked)}
+                    />
+                    <span>Mappable to PDO</span>
+                </label>
+            </FieldRow>
+            {topLevel && (
+                <FieldRow label="Storage Group">
+                    <input
+                        value={entry.storageLocation ?? ''}
+                        onChange={e => set('storageLocation', e.target.value || undefined)}
+                        placeholder="RAM"
+                    />
+                </FieldRow>
+            )}
+        </div>
+    );
+}
+
+// ─── Sub-object row (inline in table) ────────────────────────────────────────
+
+function SubObjectRow({ subIndex, sub, selected, onSelect, onDelete, onContextMenu }) {
+    return (
+        <button
+            className={`${styles['sub-row']} ${selected ? styles['sub-selected'] : ''}`}
+            onClick={() => onSelect(subIndex)}
+            onContextMenu={e => onContextMenu(subIndex, e)}
+        >
+            <span className={styles['sub-idx']}>{hexSub(subIndex)}</span>
+            <span className={styles['sub-name']}>{sub.parameterName}</span>
+            <span className={styles['sub-type']}>
+                {DataTypeName[sub.dataType] ?? (sub.dataType != null ? `0x${sub.dataType?.toString(16)}` : '—')}
+            </span>
+            <span className={styles['sub-access']}>{sub.accessType ?? '—'}</span>
+            {subIndex !== 0 && (
+                <span
+                    className={styles['sub-del']}
+                    onClick={e => { e.stopPropagation(); onDelete(subIndex); }}
+                    title="Delete sub-object"
+                >
+                    ✕
+                </span>
+            )}
+        </button>
+    );
+}
+
+// ─── Container entry editor (ARRAY / RECORD) ──────────────────────────────────
+
+function ContainerEditor({ entry, onChange }) {
+    const fileService = useFileService();
+    const dialog = useDialog();
+    const { openMenu, menuElement } = useContextMenu();
+    const [selectedSub, setSelectedSub] = useState(null);
+
+    const subObjects = entry.subObjects ?? {};
+    const subIndices = Object.keys(subObjects).map(Number).sort((a, b) => a - b);
+
+    function setEntry(key, val) { onChange({ ...entry, [key]: val }); }
+
+    function setSubEntry(subIdx, updated) {
+        onChange({
+            ...entry,
+            subObjects: { ...entry.subObjects, [subIdx]: updated },
+        });
+    }
+
+    // Append a sub-object at the next free sub-index, keeping sub 0's max-index.
+    function appendSub(sub) {
+        const next = subIndices.length > 0 ? Math.max(...subIndices) + 1 : 1;
+        const updatedSubs = { ...entry.subObjects, [next]: structuredClone(sub) };
+        if (updatedSubs[0]) {
+            updatedSubs[0] = { ...updatedSubs[0], defaultValue: String(next) };
+        }
+        onChange({ ...entry, subObjects: updatedSubs });
+        setSelectedSub(next);
+    }
+
+    function addSubObject() {
+        const next = subIndices.length > 0 ? Math.max(...subIndices) + 1 : 1;
+        appendSub(createSubEntry(`Sub-object ${next}`));
+    }
+
+    function removeSubObject(subIdx) {
+        const updated = { ...entry.subObjects };
+        delete updated[subIdx];
+        // Update max sub-index in sub0
+        const remaining = Object.keys(updated).map(Number).filter(i => i !== 0);
+        const maxSub = remaining.length > 0 ? Math.max(...remaining) : 0;
+        if (updated[0]) {
+            updated[0] = { ...updated[0], defaultValue: String(maxSub) };
+        }
+        onChange({ ...entry, subObjects: updated });
+        if (selectedSub === subIdx) setSelectedSub(null);
+    }
+
+    async function deleteSubObject(subIdx) {
+        const ok = await dialog.confirm({
+            title: 'Delete sub-object',
+            message: `Delete sub-object ${hexSub(subIdx)}?`,
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (ok) removeSubObject(subIdx);
+    }
+
+    // ─── Clipboard (sub-objects) ─────────────────────────────────────────────
+
+    async function handleCopySub(subIdx) {
+        if (subIdx == null || !subObjects[subIdx]) return;
+        await fileService.writeClipboardObject(buildSubObjectPayload(subIdx, subObjects[subIdx]));
+    }
+
+    async function handleCutSub(subIdx) {
+        // Sub 0 (max-sub-index) is structural and never cut.
+        if (subIdx == null || subIdx === 0 || !subObjects[subIdx]) return;
+        await handleCopySub(subIdx);
+        removeSubObject(subIdx);
+    }
+
+    async function handlePasteSub() {
+        const payload = await fileService.readClipboardObject();
+        if (!isValidPayload(payload) || payload.kind !== CLIPBOARD_KIND.SUB_OBJECT) return;
+        appendSub(payload.sub);
+    }
+
+    function subMenuItems(subIdx) {
+        const items = [
+            { id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', disabled: subIdx === 0, onSelect: () => handleCutSub(subIdx) },
+            { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', onSelect: () => handleCopySub(subIdx) },
+            { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => handlePasteSub() },
+        ];
+        if (subIdx !== 0) {
+            items.push({ type: 'separator' });
+            items.push({ id: 'delete', label: 'Delete', shortcut: 'Del', danger: true, onSelect: () => deleteSubObject(subIdx) });
+        }
+        return items;
+    }
+
+    function handleSubContextMenu(subIdx, e) {
+        setSelectedSub(subIdx);
+        openMenu(e, subMenuItems(subIdx));
+    }
+
+    function handleSubListContextMenu(e) {
+        // Only fires on empty list space (rows stop propagation).
+        openMenu(e, [
+            { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => handlePasteSub() },
+        ]);
+    }
+
+    function handleSubKeyDown(e) {
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        const mod = e.ctrlKey || e.metaKey;
+        if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); handleCopySub(selectedSub); }
+        else if (mod && e.key.toLowerCase() === 'x') { e.preventDefault(); handleCutSub(selectedSub); }
+        else if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); handlePasteSub(); }
+        else if (e.key === 'Delete' && selectedSub != null && selectedSub !== 0) { e.preventDefault(); deleteSubObject(selectedSub); }
+    }
+
+    const activeSub = selectedSub != null ? subObjects[selectedSub] : null;
+
+    return (
+        <div className={styles.container}>
+            {/* Container header fields */}
+            <div className={styles.fields}>
+                <FieldRow label="Parameter Name">
+                    <input
+                        value={entry.parameterName ?? ''}
+                        onChange={e => setEntry('parameterName', e.target.value)}
+                    />
+                </FieldRow>
+                <FieldRow label="Object Type">
+                    <span className={styles['read-only-value']}>
+                        {ObjectTypeName[entry.objectType] ?? entry.objectType}
+                    </span>
+                </FieldRow>
+                <FieldRow label="Storage Group">
+                    <input
+                        value={entry.storageLocation ?? ''}
+                        onChange={e => setEntry('storageLocation', e.target.value || undefined)}
+                        placeholder="RAM"
+                    />
+                </FieldRow>
+            </div>
+
+            {/* Sub-objects table */}
+            <div className={styles['sub-section']}>
+                <div className={styles['sub-header']}>
+                    <span>Sub-objects</span>
+                    <button className="primary" onClick={addSubObject}>+ Add</button>
+                </div>
+                <div
+                    className={styles['sub-list']}
+                    tabIndex={0}
+                    onKeyDown={handleSubKeyDown}
+                    onContextMenu={handleSubListContextMenu}
+                >
+                    <div className={styles['sub-list-header']}>
+                        <span>Sub</span>
+                        <span>Name</span>
+                        <span>Data Type</span>
+                        <span>Access</span>
+                        <span />
+                    </div>
+                    {subIndices.map(sub => (
+                        <SubObjectRow
+                            key={sub}
+                            subIndex={sub}
+                            sub={subObjects[sub]}
+                            selected={selectedSub === sub}
+                            onSelect={setSelectedSub}
+                            onDelete={deleteSubObject}
+                            onContextMenu={handleSubContextMenu}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* Selected sub-object editor */}
+            {activeSub && (
+                <div className={styles['sub-editor']}>
+                    <div className={styles['sub-editor-title']}>
+                        Sub {hexSub(selectedSub)} — {activeSub.parameterName}
+                    </div>
+                    <VarEditor
+                        entry={activeSub}
+                        onChange={updated => setSubEntry(selectedSub, updated)}
+                    />
+                </div>
+            )}
+
+            {menuElement}
+        </div>
+    );
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
+
+export default function ObjectDetail({ index, entry, onChange }) {
+    if (index == null || !entry) {
+        return (
+            <div className={styles.empty}>
+                <span>Select an object to view details</span>
+            </div>
+        );
+    }
+
+    const container = isContainerType(entry.objectType);
+
+    return (
+        <div className={styles.panel}>
+            <div className={styles['panel-header']}>
+                <span className={styles['panel-index']}>{hexIndex(index)}</span>
+                <span className={styles['panel-name']}>{entry.parameterName}</span>
+                <span className={styles['panel-type']}>
+                    {ObjectTypeName[entry.objectType] ?? entry.objectType}
+                </span>
+            </div>
+            <div className={styles['panel-body']}>
+                {container
+                    ? <ContainerEditor entry={entry} onChange={onChange} />
+                    : <VarEditor entry={entry} onChange={onChange} topLevel />
+                }
+            </div>
+        </div>
+    );
+}

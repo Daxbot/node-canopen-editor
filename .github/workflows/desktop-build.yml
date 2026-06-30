@@ -1,0 +1,97 @@
+name: Desktop Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # No `version:` here — let action-setup read it from the root package.json
+      # `packageManager` field (avoids the "Multiple versions of pnpm" error).
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # The flatpak target shells out to flatpak-builder and needs the runtime,
+      # SDK and Electron base app for the version pinned in electron-builder.yml
+      # (25.08 — the default 20.08 is EOL). Linux only.
+      - name: Install flatpak toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub \
+            org.freedesktop.Platform//25.08 \
+            org.freedesktop.Sdk//25.08 \
+            org.electronjs.Electron2.BaseApp//25.08
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build renderer + main/preload
+        run: pnpm --filter @canopen-editor/desktop compile
+
+      - name: Package with electron-builder
+        run: pnpm --filter @canopen-editor/desktop exec electron-builder --publish never
+        env:
+          # No Apple signing identity configured in CI — don't attempt to sign.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # Upload every installer as its own unarchived artifact.
+      - name: Upload .deb
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.deb
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .AppImage
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.AppImage
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .flatpak
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.flatpak
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .dmg
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.dmg
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .exe
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.exe
+          archive: false
+          if-no-files-found: error

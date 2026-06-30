@@ -2,10 +2,32 @@
   "name": "canopen-editor",
   "version": "0.1.0",
   "description": "CANopen editor for Javascript",
+  "private": true,
+  "packageManager": "pnpm@10.5.2",
   "scripts": {
-    "dev": "npm run dev --prefix webapp",
-    "build": "npm run build --prefix webapp",
-    "preview": "npm run preview --prefix webapp"
+    "dev": "turbo run dev",
+    "dev:web": "pnpm --filter @canopen-editor/web dev",
+    "dev:desktop": "pnpm --filter @canopen-editor/desktop dev",
+    "build": "turbo run build",
+    "build:web": "pnpm --filter @canopen-editor/web build",
+    "build:desktop": "pnpm --filter @canopen-editor/desktop build",
+    "lint": "eslint .",
+    "preview": "pnpm --filter @canopen-editor/web preview"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "turbo": "^2.5.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "electron-builder",
+      "esbuild"
+    ]
   },
   "keywords": [
     "canopen"

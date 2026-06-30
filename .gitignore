@@ -1,5 +1,18 @@
 node_modules
 .jshintrc
+
+# Build output
+dist
+out
+.turbo
+
+# Electron packaging output
+release
+*-unpacked
+
+# Logs
+*.log
+pnpm-debug.log*
 examples/*.eds
 examples/**/*.txt
 docs

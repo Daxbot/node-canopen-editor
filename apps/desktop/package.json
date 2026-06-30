@@ -1,0 +1,33 @@
+{
+  "name": "@canopen-editor/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CANopen editor desktop app",
+  "author": "Elliot Nash <enash@novadynamics.com>",
+  "homepage": "https://daxbot.com/open-source",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaxBot/node-canopen-editor.git"
+  },
+  "main": "./out/main/index.js",
+  "desktopName": "com.daxbot.canopen-editor.desktop",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build && electron-builder",
+    "build:unpack": "electron-vite build && electron-builder --dir",
+    "compile": "electron-vite build",
+    "preview": "electron-vite preview"
+  },
+  "devDependencies": {
+    "@canopen-editor/renderer": "workspace:*",
+    "@vitejs/plugin-react": "^5.2.0",
+    "canopen-eds": "^0.3.0",
+    "canopen-xdd": "^0.3.0",
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "vite": "^7.0.0"
+  }
+}
