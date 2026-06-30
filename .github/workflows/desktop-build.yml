@@ -9,18 +9,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            artifacts: |
-              apps/desktop/release/*.AppImage
-              apps/desktop/release/*.deb
-              apps/desktop/release/*.flatpak
-          - os: macos-latest
-            artifacts: |
-              apps/desktop/release/*.dmg
-          - os: windows-latest
-            artifacts: |
-              apps/desktop/release/*.exe
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -63,9 +55,43 @@ jobs:
           # No Apple signing identity configured in CI — don't attempt to sign.
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      # Upload every installer as its own unarchived artifact.
+      - name: Upload .deb
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
         with:
-          name: desktop-${{ matrix.os }}
-          path: ${{ matrix.artifacts }}
+          path: apps/desktop/release/*.deb
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .AppImage
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.AppImage
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .flatpak
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.flatpak
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .dmg
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.dmg
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload .exe
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          path: apps/desktop/release/*.exe
+          archive: false
           if-no-files-found: error
