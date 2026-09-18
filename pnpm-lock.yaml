@@ -36,11 +36,11 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0(vite@7.3.5(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0))
       canopen-eds:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.6.0
+        version: 0.6.0
       canopen-xdd:
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.2
+        version: 0.4.2
       electron:
         specifier: ^42.5.0
         version: 42.5.0
@@ -66,11 +66,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/renderer
       canopen-eds:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.6.0
+        version: 0.6.0
       canopen-xdd:
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.2
+        version: 0.4.2
       react:
         specifier: ^19.2.6
         version: 19.2.7
@@ -94,11 +94,11 @@ importers:
   packages/renderer:
     dependencies:
       canopen-eds:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.6.0
+        version: 0.6.0
       canopen-xdd:
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.2
+        version: 0.4.2
       react:
         specifier: ^19.2.6
         version: 19.2.7
@@ -1285,11 +1285,11 @@ packages:
   caniuse-lite@1.0.30001799:
     resolution: {integrity: sha512-hG1bReV+OUU+MOqK4t/ZWI0tZOyz3rqS9XuhOUz1cIcbwBKjOyJEJuw9ER5JuNyqxNk8u/JUVbGibBOL1yrjFw==}
 
-  canopen-eds@0.5.0:
-    resolution: {integrity: sha512-t31B9Wc0drj0jugAQSfVeVu8f6pg17Y5ZeQNl3z7vRY6c3x7BZnHwl4xFGJu8ZpzI6QJER5vy8Zb4psI5pNOcA==}
+  canopen-eds@0.6.0:
+    resolution: {integrity: sha512-ZSMD5fg5vT+nQtK5Llvj7DVaBl1rJqj2+6YE56+JiRV7Q/CtsCRUm97cc0Y6s9WElKpTeO2fupJLw8X1gzYA0Q==}
 
-  canopen-xdd@0.4.0:
-    resolution: {integrity: sha512-C8Wy2SrUI3o5CxEzMI8WLt/4y89i6UKg++A0sMhuR6SZGKoQgeu6SGjAA/Tx1/dwqrrFdo6JDOPfsQTIO+ds/w==}
+  canopen-xdd@0.4.2:
+    resolution: {integrity: sha512-V+BX5N8szIw1MH10F/CbLS9tIUYgOUSINaFx6Xme499KVBm3O1e30MNp5W9fi1LziOYaT9SQO5vtv7MXmT9b6Q==}
 
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
@@ -4072,13 +4072,13 @@ snapshots:
 
   caniuse-lite@1.0.30001799: {}
 
-  canopen-eds@0.5.0:
+  canopen-eds@0.6.0:
     dependencies:
       ini: 3.0.1
 
-  canopen-xdd@0.4.0:
+  canopen-xdd@0.4.2:
     dependencies:
-      canopen-eds: 0.5.0
+      canopen-eds: 0.6.0
       fast-xml-parser: 5.9.3
 
   chalk@4.1.2:
