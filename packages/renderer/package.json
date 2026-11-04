@@ -9,7 +9,7 @@
     ".": "./src/index.js"
   },
   "dependencies": {
-    "canopen-eds": "^0.6.0",
+    "canopen-eds": "^0.6.1",
     "canopen-xdd": "^0.4.2"
   },
   "peerDependencies": {
